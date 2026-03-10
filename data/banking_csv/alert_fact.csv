@@ -1,0 +1,3 @@
+alert_id,alert_code,alert_type,severity,alert_status,raised_at,account_id
+AL001,AML-1001,AML,MEDIUM,OPEN,2026-02-13T08:30:00Z,A100
+AL002,FRA-2010,FRAUD,HIGH,OPEN,2026-02-13T12:10:00Z,A102

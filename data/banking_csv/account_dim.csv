@@ -1,0 +1,4 @@
+account_id,account_number,account_type,account_status,open_date,current_balance,currency_code,branch_id,relationship_manager_id,product_id
+A100,100000001,SAVINGS,ACTIVE,2021-05-12,15420.25,USD,B002,E001,P001
+A101,100000002,CHECKING,ACTIVE,2022-03-01,8450.10,USD,B001,E002,P002
+A102,100000003,SAVINGS,DORMANT,2020-11-19,920.55,USD,B003,E003,P001

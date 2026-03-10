@@ -1,0 +1,5 @@
+customer_id,account_id,relationship_type
+C001,A100,PRIMARY
+C002,A101,PRIMARY
+C003,A102,PRIMARY
+C001,A101,JOINT

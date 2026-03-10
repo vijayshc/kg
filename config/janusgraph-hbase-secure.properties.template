@@ -1,0 +1,43 @@
+# Secure JanusGraph server-side configuration for an HBase backend with
+# Kerberos and ZooKeeper SSL. Apply this on the JanusGraph / Gremlin Server
+# host. The Python loader connects to Gremlin Server; it does not talk to
+# HBase or ZooKeeper directly.
+
+gremlin.graph=org.janusgraph.core.JanusGraphFactory
+storage.backend=hbase
+storage.hostname=zk1.example.com,zk2.example.com,zk3.example.com
+storage.port=2181
+storage.hbase.table=enterprise_kg
+storage.batch-loading=true
+ids.block-size=100000
+schema.default=none
+
+# HBase / ZooKeeper secure ensemble
+storage.hbase.ext.hbase.zookeeper.quorum=zk1.example.com,zk2.example.com,zk3.example.com
+storage.hbase.ext.hbase.zookeeper.property.clientPort=2181
+storage.hbase.ext.zookeeper.znode.parent=/hbase-secure
+
+# Kerberos
+storage.hbase.ext.hadoop.security.authentication=kerberos
+storage.hbase.ext.hadoop.security.authorization=true
+storage.hbase.ext.hbase.security.authentication=kerberos
+storage.hbase.ext.hbase.security.authorization=true
+storage.hbase.ext.hbase.rpc.protection=privacy
+storage.hbase.ext.hbase.master.kerberos.principal=hbase/_HOST@EXAMPLE.COM
+storage.hbase.ext.hbase.regionserver.kerberos.principal=hbase/_HOST@EXAMPLE.COM
+
+# ZooKeeper SSL/TLS
+# Exact key names can vary slightly by Hadoop/HBase/ZooKeeper distribution,
+# so keep this as a baseline template and align it with your platform standard.
+storage.hbase.ext.zookeeper.client.secure=true
+storage.hbase.ext.zookeeper.ssl.client.enable=true
+storage.hbase.ext.zookeeper.clientCnxnSocket=org.apache.zookeeper.ClientCnxnSocketNetty
+storage.hbase.ext.zookeeper.ssl.keyStore.location=/etc/security/janusgraph/zookeeper-client.keystore.jks
+storage.hbase.ext.zookeeper.ssl.keyStore.password=REPLACE_WITH_REAL_KEYSTORE_PASSWORD
+storage.hbase.ext.zookeeper.ssl.trustStore.location=/etc/security/janusgraph/zookeeper-client.truststore.jks
+storage.hbase.ext.zookeeper.ssl.trustStore.password=REPLACE_WITH_REAL_TRUSTSTORE_PASSWORD
+
+# Useful client tuning for large ingest runs
+storage.hbase.ext.hbase.client.retries.number=6
+storage.hbase.ext.hbase.rpc.timeout=90000
+storage.hbase.ext.hbase.client.operation.timeout=90000

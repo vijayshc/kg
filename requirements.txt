@@ -1,0 +1,5 @@
+gremlinpython>=3.7.2
+python-dotenv>=1.0.1
+PyYAML>=6.0.1
+rdflib>=7.0.0
+teradatasql>=20.0.0

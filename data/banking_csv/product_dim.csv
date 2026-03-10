@@ -1,0 +1,5 @@
+product_id,product_code,product_name,product_type,interest_rate
+P001,SAV-STD,Standard Savings,DEPOSIT,1.25
+P002,CHK-PRM,Premium Checking,DEPOSIT,0.15
+P003,LN-HME,Home Lending,LOAN,6.10
+P004,CRD-GLD,Gold Card,CARD,18.90

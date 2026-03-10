@@ -1,0 +1,3 @@
+loan_id,loan_number,loan_type,principal_amount,outstanding_amount,loan_status,customer_id
+L001,LN0001,MORTGAGE,350000.00,298450.75,ACTIVE,C001
+L002,LN0002,AUTO,42000.00,12050.10,ACTIVE,C002

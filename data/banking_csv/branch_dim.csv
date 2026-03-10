@@ -1,0 +1,4 @@
+branch_id,branch_code,branch_name,city,state,region
+B001,NYC01,Midtown Branch,New York,NY,NORTHEAST
+B002,CLT01,Charlotte Main,Charlotte,NC,SOUTHEAST
+B003,CHI01,Chicago Loop,Chicago,IL,MIDWEST

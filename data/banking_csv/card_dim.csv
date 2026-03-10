@@ -1,0 +1,4 @@
+card_id,card_number_masked,card_type,card_status,expiry_date,account_id
+CARD001,****1111,DEBIT,ACTIVE,2027-12-31,A100
+CARD002,****2222,DEBIT,ACTIVE,2028-06-30,A101
+CARD003,****3333,CREDIT,BLOCKED,2026-09-30,A102

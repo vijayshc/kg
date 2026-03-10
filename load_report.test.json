@@ -1,0 +1,768 @@
+{
+  "batch_id": "20260310T034238Z",
+  "classes": {
+    "Account": {
+      "attribute_updates": 0,
+      "base_source": {
+        "columns": [
+          "account_id",
+          "account_number",
+          "account_type",
+          "account_status",
+          "open_date",
+          "current_balance",
+          "currency_code"
+        ],
+        "table": "account_dim",
+        "type": "csv"
+      },
+      "external_property_queries": {},
+      "label": "Account",
+      "missing_vertices": 0,
+      "vertices_loaded": 3
+    },
+    "Alert": {
+      "attribute_updates": 0,
+      "base_source": {
+        "columns": [
+          "alert_id",
+          "alert_code",
+          "alert_type",
+          "severity",
+          "alert_status",
+          "raised_at"
+        ],
+        "table": "alert_fact",
+        "type": "csv"
+      },
+      "external_property_queries": {},
+      "label": "Alert",
+      "missing_vertices": 0,
+      "vertices_loaded": 2
+    },
+    "Beneficiary": {
+      "attribute_updates": 0,
+      "base_source": {
+        "columns": [
+          "beneficiary_id",
+          "beneficiary_name",
+          "bank_name",
+          "beneficiary_account"
+        ],
+        "table": "beneficiary",
+        "type": "csv"
+      },
+      "external_property_queries": {},
+      "label": "Beneficiary",
+      "missing_vertices": 0,
+      "vertices_loaded": 2
+    },
+    "Branch": {
+      "attribute_updates": 0,
+      "base_source": {
+        "columns": [
+          "branch_id",
+          "branch_code",
+          "branch_name",
+          "city",
+          "state",
+          "region"
+        ],
+        "table": "branch_dim",
+        "type": "csv"
+      },
+      "external_property_queries": {},
+      "label": "Branch",
+      "missing_vertices": 0,
+      "vertices_loaded": 3
+    },
+    "Card": {
+      "attribute_updates": 0,
+      "base_source": {
+        "columns": [
+          "card_id",
+          "card_number_masked",
+          "card_type",
+          "card_status",
+          "expiry_date"
+        ],
+        "table": "card_dim",
+        "type": "csv"
+      },
+      "external_property_queries": {},
+      "label": "Card",
+      "missing_vertices": 0,
+      "vertices_loaded": 3
+    },
+    "Customer": {
+      "attribute_updates": 15,
+      "base_source": {
+        "columns": [
+          "customer_id",
+          "customer_name",
+          "date_of_birth",
+          "customer_segment",
+          "risk_rating",
+          "kyc_status",
+          "email"
+        ],
+        "table": "customer_dim",
+        "type": "csv"
+      },
+      "external_property_queries": {
+        "city": {
+          "columns": [
+            "customer_id",
+            "city"
+          ],
+          "table": "customer_address",
+          "type": "csv"
+        },
+        "country": {
+          "columns": [
+            "customer_id",
+            "country"
+          ],
+          "table": "customer_address",
+          "type": "csv"
+        },
+        "mobilePhone": {
+          "columns": [
+            "customer_id",
+            "mobile_phone"
+          ],
+          "table": "customer_phone",
+          "type": "csv"
+        },
+        "postalCode": {
+          "columns": [
+            "customer_id",
+            "postal_code"
+          ],
+          "table": "customer_address",
+          "type": "csv"
+        },
+        "state": {
+          "columns": [
+            "customer_id",
+            "state"
+          ],
+          "table": "customer_address",
+          "type": "csv"
+        }
+      },
+      "label": "Customer",
+      "missing_vertices": 0,
+      "vertices_loaded": 3
+    },
+    "Employee": {
+      "attribute_updates": 0,
+      "base_source": {
+        "columns": [
+          "employee_id",
+          "employee_name",
+          "role",
+          "region"
+        ],
+        "table": "employee_dim",
+        "type": "csv"
+      },
+      "external_property_queries": {},
+      "label": "Employee",
+      "missing_vertices": 0,
+      "vertices_loaded": 3
+    },
+    "Loan": {
+      "attribute_updates": 0,
+      "base_source": {
+        "columns": [
+          "loan_id",
+          "loan_number",
+          "loan_type",
+          "principal_amount",
+          "outstanding_amount",
+          "loan_status"
+        ],
+        "table": "loan_dim",
+        "type": "csv"
+      },
+      "external_property_queries": {},
+      "label": "Loan",
+      "missing_vertices": 0,
+      "vertices_loaded": 2
+    },
+    "Product": {
+      "attribute_updates": 0,
+      "base_source": {
+        "columns": [
+          "product_id",
+          "product_code",
+          "product_name",
+          "product_type",
+          "interest_rate"
+        ],
+        "table": "product_dim",
+        "type": "csv"
+      },
+      "external_property_queries": {},
+      "label": "Product",
+      "missing_vertices": 0,
+      "vertices_loaded": 4
+    },
+    "Transaction": {
+      "attribute_updates": 0,
+      "base_source": {
+        "columns": [
+          "transaction_id",
+          "transaction_code",
+          "transaction_date",
+          "transaction_amount",
+          "channel",
+          "transaction_type",
+          "debit_credit"
+        ],
+        "table": "transaction_fact",
+        "type": "csv"
+      },
+      "external_property_queries": {},
+      "label": "Transaction",
+      "missing_vertices": 0,
+      "vertices_loaded": 4
+    }
+  },
+  "dry_run": false,
+  "finished_at": "2026-03-10T03:42:38.959887Z",
+  "mode": "test",
+  "relationships": {
+    "belongsToProduct": {
+      "edges_loaded": 3,
+      "label": "belongsToProduct",
+      "missing_vertices": 0,
+      "source": {
+        "columns": [
+          "account_id",
+          "product_id"
+        ],
+        "table": "account_dim",
+        "type": "csv"
+      }
+    },
+    "beneficiaryForAccount": {
+      "edges_loaded": 2,
+      "label": "beneficiaryForAccount",
+      "missing_vertices": 0,
+      "source": {
+        "columns": [
+          "account_id",
+          "beneficiary_id"
+        ],
+        "table": "beneficiary",
+        "type": "csv"
+      }
+    },
+    "hasAlert": {
+      "edges_loaded": 2,
+      "label": "hasAlert",
+      "missing_vertices": 0,
+      "source": {
+        "columns": [
+          "account_id",
+          "alert_id"
+        ],
+        "table": "alert_fact",
+        "type": "csv"
+      }
+    },
+    "hasCard": {
+      "edges_loaded": 3,
+      "label": "hasCard",
+      "missing_vertices": 0,
+      "source": {
+        "columns": [
+          "account_id",
+          "card_id"
+        ],
+        "table": "card_dim",
+        "type": "csv"
+      }
+    },
+    "hasLoan": {
+      "edges_loaded": 2,
+      "label": "hasLoan",
+      "missing_vertices": 0,
+      "source": {
+        "columns": [
+          "customer_id",
+          "loan_id"
+        ],
+        "table": "loan_dim",
+        "type": "csv"
+      }
+    },
+    "issuedByBranch": {
+      "edges_loaded": 3,
+      "label": "issuedByBranch",
+      "missing_vertices": 0,
+      "source": {
+        "columns": [
+          "account_id",
+          "branch_id"
+        ],
+        "table": "account_dim",
+        "type": "csv"
+      }
+    },
+    "managedByEmployee": {
+      "edges_loaded": 3,
+      "label": "managedByEmployee",
+      "missing_vertices": 0,
+      "source": {
+        "columns": [
+          "account_id",
+          "employee_id"
+        ],
+        "table": "account_dim",
+        "type": "csv"
+      }
+    },
+    "ownsAccount": {
+      "edges_loaded": 4,
+      "label": "ownsAccount",
+      "missing_vertices": 0,
+      "source": {
+        "columns": [
+          "customer_id",
+          "account_id",
+          "relationship_type"
+        ],
+        "table": "account_customer_bridge",
+        "type": "csv"
+      }
+    },
+    "postedTransaction": {
+      "edges_loaded": 4,
+      "label": "postedTransaction",
+      "missing_vertices": 0,
+      "source": {
+        "columns": [
+          "account_id",
+          "transaction_id"
+        ],
+        "table": "transaction_fact",
+        "type": "csv"
+      }
+    },
+    "worksAtBranch": {
+      "edges_loaded": 3,
+      "label": "worksAtBranch",
+      "missing_vertices": 0,
+      "source": {
+        "columns": [
+          "employee_id",
+          "branch_id"
+        ],
+        "table": "employee_dim",
+        "type": "csv"
+      }
+    }
+  },
+  "schema": {
+    "edge_indexes": [
+      {
+        "name": "byEdgeExternalId",
+        "property_key": "edge_external_id",
+        "unique": false
+      }
+    ],
+    "edge_labels": [
+      {
+        "multiplicity": "MULTI",
+        "name": "ownsAccount",
+        "ontology_iri": "https://example.com/ontology/bank#ownsAccount"
+      },
+      {
+        "multiplicity": "SIMPLE",
+        "name": "issuedByBranch",
+        "ontology_iri": "https://example.com/ontology/bank#issuedByBranch"
+      },
+      {
+        "multiplicity": "SIMPLE",
+        "name": "managedByEmployee",
+        "ontology_iri": "https://example.com/ontology/bank#managedByEmployee"
+      },
+      {
+        "multiplicity": "SIMPLE",
+        "name": "belongsToProduct",
+        "ontology_iri": "https://example.com/ontology/bank#belongsToProduct"
+      },
+      {
+        "multiplicity": "SIMPLE",
+        "name": "worksAtBranch",
+        "ontology_iri": "https://example.com/ontology/bank#worksAtBranch"
+      },
+      {
+        "multiplicity": "MULTI",
+        "name": "hasCard",
+        "ontology_iri": "https://example.com/ontology/bank#hasCard"
+      },
+      {
+        "multiplicity": "MULTI",
+        "name": "hasLoan",
+        "ontology_iri": "https://example.com/ontology/bank#hasLoan"
+      },
+      {
+        "multiplicity": "MULTI",
+        "name": "postedTransaction",
+        "ontology_iri": "https://example.com/ontology/bank#postedTransaction"
+      },
+      {
+        "multiplicity": "MULTI",
+        "name": "beneficiaryForAccount",
+        "ontology_iri": "https://example.com/ontology/bank#beneficiaryForAccount"
+      },
+      {
+        "multiplicity": "MULTI",
+        "name": "hasAlert",
+        "ontology_iri": "https://example.com/ontology/bank#hasAlert"
+      }
+    ],
+    "property_keys": [
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "external_id"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "ontology_iri"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "source_table"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "source_primary_key"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "load_batch_id"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "Instant",
+        "name": "loaded_at"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "edge_external_id"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "customerName"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "Date",
+        "name": "dateOfBirth"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "customerSegment"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "riskRating"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "kycStatus"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "email"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "city"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "state"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "country"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "postalCode"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "mobilePhone"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "branchCode"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "branchName"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "region"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "employeeName"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "role"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "productCode"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "productName"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "productType"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "Decimal",
+        "name": "interestRate"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "accountNumber"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "accountType"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "accountStatus"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "Date",
+        "name": "openDate"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "Decimal",
+        "name": "currentBalance"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "currencyCode"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "cardNumberMasked"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "cardType"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "cardStatus"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "Date",
+        "name": "expiryDate"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "loanNumber"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "loanType"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "Decimal",
+        "name": "principalAmount"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "Decimal",
+        "name": "outstandingAmount"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "loanStatus"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "transactionCode"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "Instant",
+        "name": "transactionDate"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "Decimal",
+        "name": "transactionAmount"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "channel"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "transactionType"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "debitCredit"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "beneficiaryName"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "bankName"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "beneficiaryAccount"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "alertCode"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "alertType"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "severity"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "alertStatus"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "Instant",
+        "name": "raisedAt"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "relationshipType"
+      }
+    ],
+    "vertex_indexes": [
+      {
+        "name": "byExternalId",
+        "property_key": "external_id",
+        "unique": true
+      }
+    ],
+    "vertex_labels": [
+      {
+        "name": "Customer",
+        "ontology_iri": "https://example.com/ontology/bank#Customer"
+      },
+      {
+        "name": "Branch",
+        "ontology_iri": "https://example.com/ontology/bank#Branch"
+      },
+      {
+        "name": "Employee",
+        "ontology_iri": "https://example.com/ontology/bank#Employee"
+      },
+      {
+        "name": "Product",
+        "ontology_iri": "https://example.com/ontology/bank#Product"
+      },
+      {
+        "name": "Account",
+        "ontology_iri": "https://example.com/ontology/bank#Account"
+      },
+      {
+        "name": "Card",
+        "ontology_iri": "https://example.com/ontology/bank#Card"
+      },
+      {
+        "name": "Loan",
+        "ontology_iri": "https://example.com/ontology/bank#Loan"
+      },
+      {
+        "name": "Transaction",
+        "ontology_iri": "https://example.com/ontology/bank#Transaction"
+      },
+      {
+        "name": "Beneficiary",
+        "ontology_iri": "https://example.com/ontology/bank#Beneficiary"
+      },
+      {
+        "name": "Alert",
+        "ontology_iri": "https://example.com/ontology/bank#Alert"
+      }
+    ]
+  },
+  "source_type": "csv",
+  "started_at": "2026-03-10T03:42:38.269972Z"
+}

@@ -1,0 +1,4 @@
+customer_id,customer_name,date_of_birth,customer_segment,risk_rating,kyc_status,email
+C001,Alice Johnson,1985-04-12,RETAIL,LOW,COMPLETED,alice.johnson@example.com
+C002,Bob Smith,1978-09-23,SME,MEDIUM,COMPLETED,bob.smith@example.com
+C003,Carol Lee,1990-01-17,PRIVATE,HIGH,PENDING,carol.lee@example.com
