@@ -17,4 +17,4 @@ bash scripts/start_janusgraph_test.sh
   --mapping config/ontology_mapping.test.yaml \
   --report-file load_report.test.json \
   --log-level INFO
-~/anaconda3/bin/python3 -m unittest discover -s tests -p 'test_loaded_graph_integration.py' -v
+~/anaconda3/bin/python3 -m unittest discover -s tests -p 'test_*.py' -v

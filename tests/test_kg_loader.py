@@ -262,5 +262,234 @@ class CsvClientTests(unittest.TestCase):
             self.assertEqual(batches[0][0]["relationship_type"], "PRIMARY")
 
 
+class OntologyReasoningTests(unittest.TestCase):
+    def test_ontology_reasoning_captures_subclasses_properties_and_restrictions(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            ontology_path = tmp_path / "reasoning.ttl"
+            ontology_path.write_text(
+                """
+@prefix ex: <https://example.com/ontology#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:Party a owl:Class .
+ex:Customer a owl:Class ; rdfs:subClassOf ex:Party .
+ex:Client a owl:Class ; owl:equivalentClass ex:Customer .
+ex:Account a owl:Class .
+
+ex:ownsProduct a owl:ObjectProperty ; rdfs:domain ex:Party ; rdfs:range ex:Account .
+ex:ownsAccount a owl:ObjectProperty ; rdfs:subPropertyOf ex:ownsProduct ; owl:inverseOf ex:accountOwnedBy .
+ex:accountRelationship a owl:ObjectProperty .
+ex:accountOwnedBy a owl:ObjectProperty ; owl:inverseOf ex:ownsAccount ; rdfs:subPropertyOf ex:accountRelationship .
+ex:managerFor a owl:ObjectProperty, owl:FunctionalProperty .
+
+ex:Customer rdfs:subClassOf [
+  a owl:Restriction ;
+  owl:onProperty ex:ownsAccount ;
+  owl:minQualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+  owl:onClass ex:Account
+] .
+                """.strip(),
+                encoding="utf-8",
+            )
+
+            ontology = kg_loader.load_ontology(kg_loader.OntologyDefinition(file=str(ontology_path), format="turtle"))
+
+            self.assertIn("https://example.com/ontology#Party", ontology.class_lineage("https://example.com/ontology#Customer"))
+            self.assertIn("https://example.com/ontology#Client", ontology.class_lineage("https://example.com/ontology#Customer"))
+            self.assertIn(
+                "https://example.com/ontology#ownsProduct",
+                ontology.property_lineage("https://example.com/ontology#ownsAccount"),
+            )
+            self.assertIn(
+                "https://example.com/ontology#accountOwnedBy",
+                ontology.inverse_properties_for("https://example.com/ontology#ownsAccount"),
+            )
+            self.assertNotIn(
+                "https://example.com/ontology#accountRelationship",
+                ontology.inverse_properties_for("https://example.com/ontology#ownsAccount"),
+            )
+            self.assertIn(
+                "functional",
+                ontology.effective_property_characteristics("https://example.com/ontology#managerFor"),
+            )
+            restrictions = ontology.restrictions_for_class("https://example.com/ontology#Customer")
+            self.assertTrue(
+                any(
+                    item.property_iri == "https://example.com/ontology#ownsAccount"
+                    and item.constraint_type == "min_cardinality"
+                    and item.cardinality == 1
+                    for item in restrictions
+                )
+            )
+
+
+class OntologyValidationTests(unittest.TestCase):
+    def test_subclass_and_superproperty_domain_range_validation_passes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            ontology_path = tmp_path / "ontology.ttl"
+            ontology_path.write_text(
+                """
+@prefix ex: <https://example.com/ontology#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:Party a owl:Class .
+ex:FinancialProduct a owl:Class .
+ex:Customer a owl:Class ; rdfs:subClassOf ex:Party .
+ex:Account a owl:Class ; rdfs:subClassOf ex:FinancialProduct .
+ex:ownsProduct a owl:ObjectProperty ; rdfs:domain ex:Party ; rdfs:range ex:FinancialProduct .
+ex:ownsAccount a owl:ObjectProperty ; rdfs:subPropertyOf ex:ownsProduct ; rdfs:domain ex:Customer ; rdfs:range ex:Account .
+                """.strip(),
+                encoding="utf-8",
+            )
+
+            config = kg_loader.LoaderConfig(
+                ontology=kg_loader.OntologyDefinition(file=str(ontology_path), format="turtle"),
+                janusgraph=kg_loader.JanusGraphSettings(url="ws://localhost:8182/gremlin"),
+                runtime=kg_loader.RuntimeSettings(strict_ontology=True),
+                ingestion=kg_loader.IngestionSettings(mode="test", source_type="csv", csv_root_dir=str(tmp_path)),
+                classes=[
+                    kg_loader.ClassMapping(
+                        iri="https://example.com/ontology#Customer",
+                        source=kg_loader.SourceSpec(table="customer_dim", key_column="customer_id"),
+                    ),
+                    kg_loader.ClassMapping(
+                        iri="https://example.com/ontology#Account",
+                        source=kg_loader.SourceSpec(table="account_dim", key_column="account_id"),
+                    ),
+                ],
+                relationships=[
+                    kg_loader.RelationshipMapping(
+                        iri="https://example.com/ontology#ownsAccount",
+                        source_class_iri="https://example.com/ontology#Customer",
+                        target_class_iri="https://example.com/ontology#Account",
+                        multiplicity="MULTI",
+                        source=kg_loader.SourceSpec(table="bridge", from_column="customer_id", to_column="account_id"),
+                    )
+                ],
+                mapping_file="memory",
+            )
+
+            ontology = kg_loader.load_ontology(config.ontology)
+            kg_loader.validate_mapping_against_ontology(config, ontology)
+
+    def test_functional_relationship_rejects_non_functional_multiplicity(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            ontology_path = tmp_path / "ontology.ttl"
+            ontology_path.write_text(
+                """
+@prefix ex: <https://example.com/ontology#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:Account a owl:Class .
+ex:Branch a owl:Class .
+ex:issuedByBranch a owl:ObjectProperty, owl:FunctionalProperty ;
+  rdfs:domain ex:Account ;
+  rdfs:range ex:Branch .
+                """.strip(),
+                encoding="utf-8",
+            )
+
+            config = kg_loader.LoaderConfig(
+                ontology=kg_loader.OntologyDefinition(file=str(ontology_path), format="turtle"),
+                janusgraph=kg_loader.JanusGraphSettings(url="ws://localhost:8182/gremlin"),
+                runtime=kg_loader.RuntimeSettings(strict_ontology=True),
+                ingestion=kg_loader.IngestionSettings(mode="test", source_type="csv", csv_root_dir=str(tmp_path)),
+                classes=[
+                    kg_loader.ClassMapping(
+                        iri="https://example.com/ontology#Account",
+                        source=kg_loader.SourceSpec(table="account_dim", key_column="account_id"),
+                    ),
+                    kg_loader.ClassMapping(
+                        iri="https://example.com/ontology#Branch",
+                        source=kg_loader.SourceSpec(table="branch_dim", key_column="branch_id"),
+                    ),
+                ],
+                relationships=[
+                    kg_loader.RelationshipMapping(
+                        iri="https://example.com/ontology#issuedByBranch",
+                        source_class_iri="https://example.com/ontology#Account",
+                        target_class_iri="https://example.com/ontology#Branch",
+                        multiplicity="MULTI",
+                        source=kg_loader.SourceSpec(table="account_dim", from_column="account_id", to_column="branch_id"),
+                    )
+                ],
+                mapping_file="memory",
+            )
+
+            ontology = kg_loader.load_ontology(config.ontology)
+
+            with self.assertRaises(ValueError) as ctx:
+                kg_loader.validate_mapping_against_ontology(config, ontology)
+
+            self.assertIn("MANY2ONE or ONE2ONE", str(ctx.exception))
+
+    def test_all_values_from_rejects_incompatible_relationship_target(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            ontology_path = tmp_path / "ontology.ttl"
+            ontology_path.write_text(
+                """
+@prefix ex: <https://example.com/ontology#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:Account a owl:Class .
+ex:Branch a owl:Class .
+ex:Employee a owl:Class .
+ex:issuedByBranch a owl:ObjectProperty .
+
+ex:Account rdfs:subClassOf [
+  a owl:Restriction ;
+  owl:onProperty ex:issuedByBranch ;
+  owl:allValuesFrom ex:Branch
+] .
+                """.strip(),
+                encoding="utf-8",
+            )
+
+            config = kg_loader.LoaderConfig(
+                ontology=kg_loader.OntologyDefinition(file=str(ontology_path), format="turtle"),
+                janusgraph=kg_loader.JanusGraphSettings(url="ws://localhost:8182/gremlin"),
+                runtime=kg_loader.RuntimeSettings(strict_ontology=True),
+                ingestion=kg_loader.IngestionSettings(mode="test", source_type="csv", csv_root_dir=str(tmp_path)),
+                classes=[
+                    kg_loader.ClassMapping(
+                        iri="https://example.com/ontology#Account",
+                        source=kg_loader.SourceSpec(table="account_dim", key_column="account_id"),
+                    ),
+                    kg_loader.ClassMapping(
+                        iri="https://example.com/ontology#Employee",
+                        source=kg_loader.SourceSpec(table="employee_dim", key_column="employee_id"),
+                    ),
+                ],
+                relationships=[
+                    kg_loader.RelationshipMapping(
+                        iri="https://example.com/ontology#issuedByBranch",
+                        source_class_iri="https://example.com/ontology#Account",
+                        target_class_iri="https://example.com/ontology#Employee",
+                        multiplicity="MANY2ONE",
+                        source=kg_loader.SourceSpec(table="account_dim", from_column="account_id", to_column="employee_id"),
+                    )
+                ],
+                mapping_file="memory",
+            )
+
+            ontology = kg_loader.load_ontology(config.ontology)
+
+            with self.assertRaises(ValueError) as ctx:
+                kg_loader.validate_mapping_against_ontology(config, ontology)
+
+            self.assertIn("constrained to target class", str(ctx.exception))
+
+
 if __name__ == "__main__":
     unittest.main()

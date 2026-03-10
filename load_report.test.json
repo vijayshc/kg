@@ -1,5 +1,5 @@
 {
-  "batch_id": "20260310T034238Z",
+  "batch_id": "20260310T135936Z",
   "classes": {
     "Account": {
       "attribute_updates": 0,
@@ -231,7 +231,7 @@
     }
   },
   "dry_run": false,
-  "finished_at": "2026-03-10T03:42:38.959887Z",
+  "finished_at": "2026-03-10T13:59:36.693306Z",
   "mode": "test",
   "relationships": {
     "belongsToProduct": {
@@ -381,47 +381,47 @@
         "ontology_iri": "https://example.com/ontology/bank#ownsAccount"
       },
       {
-        "multiplicity": "SIMPLE",
+        "multiplicity": "MANY2ONE",
         "name": "issuedByBranch",
         "ontology_iri": "https://example.com/ontology/bank#issuedByBranch"
       },
       {
-        "multiplicity": "SIMPLE",
+        "multiplicity": "MANY2ONE",
         "name": "managedByEmployee",
         "ontology_iri": "https://example.com/ontology/bank#managedByEmployee"
       },
       {
-        "multiplicity": "SIMPLE",
+        "multiplicity": "MANY2ONE",
         "name": "belongsToProduct",
         "ontology_iri": "https://example.com/ontology/bank#belongsToProduct"
       },
       {
-        "multiplicity": "SIMPLE",
+        "multiplicity": "MANY2ONE",
         "name": "worksAtBranch",
         "ontology_iri": "https://example.com/ontology/bank#worksAtBranch"
       },
       {
-        "multiplicity": "MULTI",
+        "multiplicity": "ONE2MANY",
         "name": "hasCard",
         "ontology_iri": "https://example.com/ontology/bank#hasCard"
       },
       {
-        "multiplicity": "MULTI",
+        "multiplicity": "ONE2MANY",
         "name": "hasLoan",
         "ontology_iri": "https://example.com/ontology/bank#hasLoan"
       },
       {
-        "multiplicity": "MULTI",
+        "multiplicity": "ONE2MANY",
         "name": "postedTransaction",
         "ontology_iri": "https://example.com/ontology/bank#postedTransaction"
       },
       {
-        "multiplicity": "MULTI",
+        "multiplicity": "ONE2MANY",
         "name": "beneficiaryForAccount",
         "ontology_iri": "https://example.com/ontology/bank#beneficiaryForAccount"
       },
       {
-        "multiplicity": "MULTI",
+        "multiplicity": "ONE2MANY",
         "name": "hasAlert",
         "ontology_iri": "https://example.com/ontology/bank#hasAlert"
       }
@@ -436,6 +436,11 @@
         "cardinality": "SINGLE",
         "data_type": "String",
         "name": "ontology_iri"
+      },
+      {
+        "cardinality": "SET",
+        "data_type": "String",
+        "name": "rdf_types"
       },
       {
         "cardinality": "SINGLE",
@@ -461,6 +466,16 @@
         "cardinality": "SINGLE",
         "data_type": "String",
         "name": "edge_external_id"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "ontology_property_lineage"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "ontology_inverse_property_iris"
       },
       {
         "cardinality": "SINGLE",
@@ -764,5 +779,5 @@
     ]
   },
   "source_type": "csv",
-  "started_at": "2026-03-10T03:42:38.269972Z"
+  "started_at": "2026-03-10T13:59:36.225466Z"
 }

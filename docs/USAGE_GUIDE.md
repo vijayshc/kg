@@ -85,7 +85,21 @@ This keeps ingestion logic separate from backend storage plumbing.
 /home/vijay/kg
 ├── .env
 ├── README.md
+├── backups/
+│   └── kg_loader.monolith.backup.20260310.py
 ├── kg_loader.py
+├── kg_loader/
+│   ├── __init__.py
+│   ├── __main__.py
+│   ├── cli.py
+│   ├── config.py
+│   ├── constants.py
+│   ├── data_clients.py
+│   ├── gremlin.py
+│   ├── loader.py
+│   ├── ontology.py
+│   ├── schema.py
+│   └── utils.py
 ├── requirements.txt
 ├── config/
 │   ├── janusgraph-hbase-secure.properties.template
@@ -117,20 +131,30 @@ This keeps ingestion logic separate from backend storage plumbing.
 
 ## 4. Core components
 
-## 4.1 `kg_loader.py`
+## 4.1 `kg_loader.py` and `kg_loader/`
 
-This is the main loader.
+`kg_loader.py` is the stable CLI entrypoint kept for backward compatibility.
+
+The implementation now lives in the modular `kg_loader/` package.
 
 Key responsibilities:
 
-- parse ontology classes and properties,
-- validate mappings,
-- create missing JanusGraph schema,
-- read source rows from CSV or Teradata,
-- build vertex IDs and edge IDs,
-- upsert vertices and edges,
-- attach ontology metadata and lineage metadata,
-- produce JSON run reports.
+- `kg_loader/config.py`
+  - mapping and runtime dataclasses
+- `kg_loader/ontology.py`
+  - ontology parsing, reasoning, and ontology-aware validation
+- `kg_loader/schema.py`
+  - JanusGraph schema planning
+- `kg_loader/data_clients.py`
+  - CSV and Teradata source access
+- `kg_loader/gremlin.py`
+  - Gremlin scripts and JanusGraph client
+- `kg_loader/loader.py`
+  - orchestration of end-to-end loading
+- `kg_loader/cli.py`
+  - command-line parsing and report output
+- `kg_loader/utils.py`
+  - shared validation, coercion, and helper utilities
 
 ## 4.2 Mapping files
 
@@ -182,17 +206,21 @@ The loader expects:
 The loader then:
 
 1. parses ontology terms,
-2. validates that mapped IRIs exist,
-3. creates JanusGraph property keys / labels / indexes,
-4. loads vertices for each mapped class,
-5. loads datatype properties,
-6. loads edges for object properties,
-7. stores metadata such as:
+2. reasons over supported ontology hierarchies and constraints,
+3. validates that mapped IRIs and mappings are ontology-compatible,
+4. creates JanusGraph property keys / labels / indexes,
+5. loads vertices for each mapped class,
+6. loads datatype properties,
+7. loads edges for object properties,
+8. stores metadata such as:
    - `external_id`
    - `ontology_iri`
+  - `rdf_types`
    - `source_table`
    - `source_primary_key`
    - `edge_external_id`
+  - `ontology_property_lineage`
+  - `ontology_inverse_property_iris`
    - `load_batch_id`
    - `loaded_at`
 
@@ -551,6 +579,8 @@ The current suite validates all of the following directly from **JanusGraph**:
 9. Customer external properties loaded from secondary CSV tables are correct.
 10. Every expected edge exists with the correct endpoints and properties.
 11. Edge source/target labels match the ontology domain/range mapping.
+12. Subclass and equivalent-class querying works through `rdf_types`.
+13. Supported OWL restrictions are satisfied by the loaded graph.
 
 ## 11.2 How the validation suite works
 
@@ -591,7 +621,7 @@ This script will:
 2. ensure JanusGraph is installed,
 3. ensure the local JanusGraph server is running,
 4. reload the sample graph idempotently,
-5. execute the JanusGraph-backed integration tests.
+5. execute the full local Python test suite in the correct order.
 
 ---
 
@@ -758,6 +788,7 @@ Important JanusGraph compatibility notes discovered during live testing:
 
 - `external_id`
 - `ontology_iri`
+- `rdf_types` (the mapped class plus superclasses/equivalent classes)
 - `source_table`
 - `source_primary_key`
 - `load_batch_id`
@@ -767,9 +798,78 @@ Important JanusGraph compatibility notes discovered during live testing:
 
 - `edge_external_id`
 - `ontology_iri`
+- `ontology_property_lineage` (mapped property plus super/equivalent properties)
+- `ontology_inverse_property_iris`
 - `source_table`
 - `load_batch_id`
 - `loaded_at`
+
+## 14.6 Ontology semantics currently supported
+
+The loader now supports a practical enterprise subset of ontology semantics.
+
+### Class reasoning
+
+- `rdfs:subClassOf`
+- `owl:equivalentClass`
+- superclass closure persisted on vertices through `rdf_types`
+
+### Property reasoning
+
+- `rdfs:subPropertyOf`
+- `owl:equivalentProperty`
+- `owl:inverseOf`
+- property lineage persisted on edges through `ontology_property_lineage`
+
+### Property characteristics
+
+- `owl:FunctionalProperty`
+- `owl:InverseFunctionalProperty`
+- parsing support for transitive / symmetric / asymmetric / reflexive / irreflexive properties
+
+### Constraint parsing and validation
+
+The ontology parser and local validation suite support these OWL restriction styles:
+
+- `owl:minCardinality`
+- `owl:maxCardinality`
+- `owl:cardinality`
+- `owl:minQualifiedCardinality`
+- `owl:maxQualifiedCardinality`
+- `owl:qualifiedCardinality`
+- `owl:someValuesFrom`
+- `owl:allValuesFrom`
+- `owl:hasValue`
+
+### Where those semantics are applied
+
+1. **mapping validation**
+  - domain/range checks use subclass and equivalent-class reasoning
+  - functional and max-cardinality constraints are checked against configured mapping cardinality / multiplicity
+
+2. **load-time metadata**
+  - vertices receive `rdf_types`
+  - edges receive lineage and inverse-property metadata
+
+3. **live local graph validation**
+  - the JanusGraph-backed integration suite validates supported restrictions against loaded data
+
+## 14.7 Current OWL boundaries
+
+This is not a full general-purpose OWL reasoner.
+
+The current implementation does **not** attempt to fully materialize or enforce all possible OWL constructs, especially:
+
+- `owl:unionOf`
+- `owl:intersectionOf`
+- `owl:complementOf`
+- `owl:oneOf`
+- arbitrary nested anonymous class expressions beyond the supported restriction set
+- automatic entity merging via `owl:sameAs`
+- automatic inverse-edge creation in JanusGraph
+- full disjointness conflict detection across independently mapped datasets
+
+Those can be added later if your enterprise ontology relies heavily on them, but the current feature set already covers the most common operational requirements for class hierarchies, relationship hierarchies, domain/range validation, and practical cardinality constraints.
 
 ---
 

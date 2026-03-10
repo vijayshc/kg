@@ -7,6 +7,12 @@
 bank:BankingOntology a owl:Ontology ;
   rdfs:label "Sample banking ontology for JanusGraph loader testing" .
 
+bank:Party a owl:Class .
+bank:Organization a owl:Class .
+bank:FinancialProduct a owl:Class .
+bank:FinancialEvent a owl:Class .
+bank:Client a owl:Class ; owl:equivalentClass bank:Customer .
+
 bank:Customer a owl:Class .
 bank:Branch a owl:Class .
 bank:Employee a owl:Class .
@@ -18,7 +24,23 @@ bank:Transaction a owl:Class .
 bank:Beneficiary a owl:Class .
 bank:Alert a owl:Class .
 
-bank:customerName a owl:DatatypeProperty ; rdfs:domain bank:Customer ; rdfs:range xsd:string .
+bank:Customer rdfs:subClassOf bank:Party .
+bank:Employee rdfs:subClassOf bank:Party .
+bank:Beneficiary rdfs:subClassOf bank:Party .
+bank:Branch rdfs:subClassOf bank:Organization .
+bank:Product rdfs:subClassOf bank:FinancialProduct .
+bank:Account rdfs:subClassOf bank:FinancialProduct .
+bank:Card rdfs:subClassOf bank:FinancialProduct .
+bank:Loan rdfs:subClassOf bank:FinancialProduct .
+bank:Transaction rdfs:subClassOf bank:FinancialEvent .
+bank:Alert rdfs:subClassOf bank:FinancialEvent .
+
+bank:partyName a owl:DatatypeProperty ; rdfs:domain bank:Party ; rdfs:range xsd:string .
+bank:organizationName a owl:DatatypeProperty ; rdfs:domain bank:Organization ; rdfs:range xsd:string .
+bank:financialProductIdentifier a owl:DatatypeProperty ; rdfs:domain bank:FinancialProduct ; rdfs:range xsd:string .
+bank:financialEventTimestamp a owl:DatatypeProperty ; rdfs:domain bank:FinancialEvent ; rdfs:range xsd:dateTime .
+
+bank:customerName a owl:DatatypeProperty ; rdfs:subPropertyOf bank:partyName ; rdfs:domain bank:Customer ; rdfs:range xsd:string .
 bank:dateOfBirth a owl:DatatypeProperty ; rdfs:domain bank:Customer ; rdfs:range xsd:date .
 bank:customerSegment a owl:DatatypeProperty ; rdfs:domain bank:Customer ; rdfs:range xsd:string .
 bank:riskRating a owl:DatatypeProperty ; rdfs:domain bank:Customer ; rdfs:range xsd:string .
@@ -27,15 +49,15 @@ bank:email a owl:DatatypeProperty ; rdfs:domain bank:Customer ; rdfs:range xsd:s
 bank:mobilePhone a owl:DatatypeProperty ; rdfs:domain bank:Customer ; rdfs:range xsd:string .
 
 bank:branchCode a owl:DatatypeProperty ; rdfs:domain bank:Branch ; rdfs:range xsd:string .
-bank:branchName a owl:DatatypeProperty ; rdfs:domain bank:Branch ; rdfs:range xsd:string .
-bank:employeeName a owl:DatatypeProperty ; rdfs:domain bank:Employee ; rdfs:range xsd:string .
+bank:branchName a owl:DatatypeProperty ; rdfs:subPropertyOf bank:organizationName ; rdfs:domain bank:Branch ; rdfs:range xsd:string .
+bank:employeeName a owl:DatatypeProperty ; rdfs:subPropertyOf bank:partyName ; rdfs:domain bank:Employee ; rdfs:range xsd:string .
 bank:role a owl:DatatypeProperty ; rdfs:domain bank:Employee ; rdfs:range xsd:string .
-bank:productCode a owl:DatatypeProperty ; rdfs:domain bank:Product ; rdfs:range xsd:string .
+bank:productCode a owl:DatatypeProperty, owl:FunctionalProperty ; rdfs:subPropertyOf bank:financialProductIdentifier ; rdfs:domain bank:Product ; rdfs:range xsd:string .
 bank:productName a owl:DatatypeProperty ; rdfs:domain bank:Product ; rdfs:range xsd:string .
 bank:productType a owl:DatatypeProperty ; rdfs:domain bank:Product ; rdfs:range xsd:string .
 bank:interestRate a owl:DatatypeProperty ; rdfs:domain bank:Product ; rdfs:range xsd:decimal .
 
-bank:accountNumber a owl:DatatypeProperty ; rdfs:domain bank:Account ; rdfs:range xsd:string .
+bank:accountNumber a owl:DatatypeProperty, owl:FunctionalProperty ; rdfs:subPropertyOf bank:financialProductIdentifier ; rdfs:domain bank:Account ; rdfs:range xsd:string .
 bank:accountType a owl:DatatypeProperty ; rdfs:domain bank:Account ; rdfs:range xsd:string .
 bank:accountStatus a owl:DatatypeProperty ; rdfs:domain bank:Account ; rdfs:range xsd:string .
 bank:openDate a owl:DatatypeProperty ; rdfs:domain bank:Account ; rdfs:range xsd:date .
@@ -47,28 +69,28 @@ bank:cardType a owl:DatatypeProperty ; rdfs:domain bank:Card ; rdfs:range xsd:st
 bank:cardStatus a owl:DatatypeProperty ; rdfs:domain bank:Card ; rdfs:range xsd:string .
 bank:expiryDate a owl:DatatypeProperty ; rdfs:domain bank:Card ; rdfs:range xsd:date .
 
-bank:loanNumber a owl:DatatypeProperty ; rdfs:domain bank:Loan ; rdfs:range xsd:string .
+bank:loanNumber a owl:DatatypeProperty, owl:FunctionalProperty ; rdfs:subPropertyOf bank:financialProductIdentifier ; rdfs:domain bank:Loan ; rdfs:range xsd:string .
 bank:loanType a owl:DatatypeProperty ; rdfs:domain bank:Loan ; rdfs:range xsd:string .
 bank:principalAmount a owl:DatatypeProperty ; rdfs:domain bank:Loan ; rdfs:range xsd:decimal .
 bank:outstandingAmount a owl:DatatypeProperty ; rdfs:domain bank:Loan ; rdfs:range xsd:decimal .
 bank:loanStatus a owl:DatatypeProperty ; rdfs:domain bank:Loan ; rdfs:range xsd:string .
 
-bank:transactionCode a owl:DatatypeProperty ; rdfs:domain bank:Transaction ; rdfs:range xsd:string .
-bank:transactionDate a owl:DatatypeProperty ; rdfs:domain bank:Transaction ; rdfs:range xsd:dateTime .
+bank:transactionCode a owl:DatatypeProperty, owl:FunctionalProperty ; rdfs:domain bank:Transaction ; rdfs:range xsd:string .
+bank:transactionDate a owl:DatatypeProperty ; rdfs:subPropertyOf bank:financialEventTimestamp ; rdfs:domain bank:Transaction ; rdfs:range xsd:dateTime .
 bank:transactionAmount a owl:DatatypeProperty ; rdfs:domain bank:Transaction ; rdfs:range xsd:decimal .
 bank:channel a owl:DatatypeProperty ; rdfs:domain bank:Transaction ; rdfs:range xsd:string .
 bank:transactionType a owl:DatatypeProperty ; rdfs:domain bank:Transaction ; rdfs:range xsd:string .
 bank:debitCredit a owl:DatatypeProperty ; rdfs:domain bank:Transaction ; rdfs:range xsd:string .
 
-bank:beneficiaryName a owl:DatatypeProperty ; rdfs:domain bank:Beneficiary ; rdfs:range xsd:string .
+bank:beneficiaryName a owl:DatatypeProperty ; rdfs:subPropertyOf bank:partyName ; rdfs:domain bank:Beneficiary ; rdfs:range xsd:string .
 bank:bankName a owl:DatatypeProperty ; rdfs:domain bank:Beneficiary ; rdfs:range xsd:string .
-bank:beneficiaryAccount a owl:DatatypeProperty ; rdfs:domain bank:Beneficiary ; rdfs:range xsd:string .
+bank:beneficiaryAccount a owl:DatatypeProperty, owl:FunctionalProperty ; rdfs:domain bank:Beneficiary ; rdfs:range xsd:string .
 
-bank:alertCode a owl:DatatypeProperty ; rdfs:domain bank:Alert ; rdfs:range xsd:string .
+bank:alertCode a owl:DatatypeProperty, owl:FunctionalProperty ; rdfs:domain bank:Alert ; rdfs:range xsd:string .
 bank:alertType a owl:DatatypeProperty ; rdfs:domain bank:Alert ; rdfs:range xsd:string .
 bank:severity a owl:DatatypeProperty ; rdfs:domain bank:Alert ; rdfs:range xsd:string .
 bank:alertStatus a owl:DatatypeProperty ; rdfs:domain bank:Alert ; rdfs:range xsd:string .
-bank:raisedAt a owl:DatatypeProperty ; rdfs:domain bank:Alert ; rdfs:range xsd:dateTime .
+bank:raisedAt a owl:DatatypeProperty ; rdfs:subPropertyOf bank:financialEventTimestamp ; rdfs:domain bank:Alert ; rdfs:range xsd:dateTime .
 
 bank:city a owl:DatatypeProperty ; rdfs:range xsd:string .
 bank:state a owl:DatatypeProperty ; rdfs:range xsd:string .
@@ -77,13 +99,76 @@ bank:postalCode a owl:DatatypeProperty ; rdfs:range xsd:string .
 bank:region a owl:DatatypeProperty ; rdfs:range xsd:string .
 bank:relationshipType a owl:DatatypeProperty ; rdfs:range xsd:string .
 
-bank:ownsAccount a owl:ObjectProperty ; rdfs:domain bank:Customer ; rdfs:range bank:Account .
-bank:issuedByBranch a owl:ObjectProperty ; rdfs:domain bank:Account ; rdfs:range bank:Branch .
-bank:managedByEmployee a owl:ObjectProperty ; rdfs:domain bank:Account ; rdfs:range bank:Employee .
-bank:belongsToProduct a owl:ObjectProperty ; rdfs:domain bank:Account ; rdfs:range bank:Product .
-bank:worksAtBranch a owl:ObjectProperty ; rdfs:domain bank:Employee ; rdfs:range bank:Branch .
-bank:hasCard a owl:ObjectProperty ; rdfs:domain bank:Account ; rdfs:range bank:Card .
-bank:hasLoan a owl:ObjectProperty ; rdfs:domain bank:Customer ; rdfs:range bank:Loan .
-bank:postedTransaction a owl:ObjectProperty ; rdfs:domain bank:Account ; rdfs:range bank:Transaction .
-bank:beneficiaryForAccount a owl:ObjectProperty ; rdfs:domain bank:Account ; rdfs:range bank:Beneficiary .
-bank:hasAlert a owl:ObjectProperty ; rdfs:domain bank:Account ; rdfs:range bank:Alert .
+bank:ownsFinancialProduct a owl:ObjectProperty ; rdfs:domain bank:Party ; rdfs:range bank:FinancialProduct .
+bank:generatesFinancialEvent a owl:ObjectProperty ; rdfs:domain bank:FinancialProduct ; rdfs:range bank:FinancialEvent .
+bank:relationshipManagerFor a owl:ObjectProperty ; rdfs:domain bank:Account ; rdfs:range bank:Employee .
+bank:accountOwnedBy a owl:ObjectProperty ; rdfs:domain bank:Account ; rdfs:range bank:Party ; owl:inverseOf bank:ownsAccount .
+bank:loanOwnedBy a owl:ObjectProperty ; rdfs:domain bank:Loan ; rdfs:range bank:Party ; owl:inverseOf bank:hasLoan .
+
+bank:ownsAccount a owl:ObjectProperty ; rdfs:subPropertyOf bank:ownsFinancialProduct ; rdfs:domain bank:Customer ; rdfs:range bank:Account ; owl:inverseOf bank:accountOwnedBy .
+bank:issuedByBranch a owl:ObjectProperty, owl:FunctionalProperty ; rdfs:domain bank:Account ; rdfs:range bank:Branch .
+bank:managedByEmployee a owl:ObjectProperty, owl:FunctionalProperty ; rdfs:domain bank:Account ; rdfs:range bank:Employee ; owl:equivalentProperty bank:relationshipManagerFor .
+bank:belongsToProduct a owl:ObjectProperty, owl:FunctionalProperty ; rdfs:domain bank:Account ; rdfs:range bank:Product .
+bank:worksAtBranch a owl:ObjectProperty, owl:FunctionalProperty ; rdfs:domain bank:Employee ; rdfs:range bank:Branch .
+bank:hasCard a owl:ObjectProperty, owl:InverseFunctionalProperty ; rdfs:subPropertyOf bank:ownsFinancialProduct ; rdfs:domain bank:Account ; rdfs:range bank:Card .
+bank:hasLoan a owl:ObjectProperty, owl:InverseFunctionalProperty ; rdfs:subPropertyOf bank:ownsFinancialProduct ; rdfs:domain bank:Customer ; rdfs:range bank:Loan ; owl:inverseOf bank:loanOwnedBy .
+bank:postedTransaction a owl:ObjectProperty, owl:InverseFunctionalProperty ; rdfs:subPropertyOf bank:generatesFinancialEvent ; rdfs:domain bank:Account ; rdfs:range bank:Transaction .
+bank:beneficiaryForAccount a owl:ObjectProperty, owl:InverseFunctionalProperty ; rdfs:domain bank:Account ; rdfs:range bank:Beneficiary .
+bank:hasAlert a owl:ObjectProperty, owl:InverseFunctionalProperty ; rdfs:subPropertyOf bank:generatesFinancialEvent ; rdfs:domain bank:Account ; rdfs:range bank:Alert .
+
+bank:Customer rdfs:subClassOf [
+  a owl:Restriction ;
+  owl:onProperty bank:ownsAccount ;
+  owl:minQualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+  owl:onClass bank:Account
+] .
+
+bank:Account rdfs:subClassOf [
+  a owl:Restriction ;
+  owl:onProperty bank:issuedByBranch ;
+  owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+  owl:onClass bank:Branch
+] , [
+  a owl:Restriction ;
+  owl:onProperty bank:issuedByBranch ;
+  owl:allValuesFrom bank:Branch
+] , [
+  a owl:Restriction ;
+  owl:onProperty bank:belongsToProduct ;
+  owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+  owl:onClass bank:Product
+] , [
+  a owl:Restriction ;
+  owl:onProperty bank:accountNumber ;
+  owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+  owl:onDataRange xsd:string
+] .
+
+bank:Employee rdfs:subClassOf [
+  a owl:Restriction ;
+  owl:onProperty bank:worksAtBranch ;
+  owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+  owl:onClass bank:Branch
+] .
+
+bank:Product rdfs:subClassOf [
+  a owl:Restriction ;
+  owl:onProperty bank:interestRate ;
+  owl:someValuesFrom xsd:decimal
+] .
+
+bank:Transaction rdfs:subClassOf [
+  a owl:Restriction ;
+  owl:onProperty bank:transactionDate ;
+  owl:someValuesFrom xsd:dateTime
+] , [
+  a owl:Restriction ;
+  owl:onProperty bank:transactionDate ;
+  owl:allValuesFrom xsd:dateTime
+] .
+
+bank:Alert rdfs:subClassOf [
+  a owl:Restriction ;
+  owl:onProperty bank:alertStatus ;
+  owl:hasValue "OPEN"
+] .

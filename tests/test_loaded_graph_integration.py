@@ -66,6 +66,9 @@ class GraphClient:
     def count_edges(self, label: str) -> int:
         return int(self.submit_one("g.E().hasLabel(edgeLabel).count()", {"edgeLabel": label}))
 
+    def count_vertices_with_rdf_type(self, rdf_type_iri: str) -> int:
+        return int(self.submit_one("g.V().has('rdf_types', rdfType).count()", {"rdfType": rdf_type_iri}))
+
     def count_vertices_with_ontology(self, label: str, ontology_iri: str) -> int:
         return int(
             self.submit_one(
@@ -128,6 +131,26 @@ class GraphClient:
             {"edgeExternalId": edge_external_id},
         )
 
+    def outgoing_edge_count(self, vertex_external_id: str, edge_label: str) -> int:
+        return int(
+            self.submit_one(
+                "g.V().has('external_id', externalId).outE(edgeLabel).count()",
+                {"externalId": vertex_external_id, "edgeLabel": edge_label},
+            )
+        )
+
+    def outgoing_targets(self, vertex_external_id: str, edge_label: str) -> list[Dict[str, Any]]:
+        result = self.submit_one(
+            "g.V().has('external_id', externalId).out(edgeLabel)"
+            ".project('external_id','label','rdf_types')"
+            ".by(values('external_id'))"
+            ".by(label())"
+            ".by(values('rdf_types').fold())"
+            ".fold()",
+            {"externalId": vertex_external_id, "edgeLabel": edge_label},
+        )
+        return list(result or [])
+
 
 class ExpectedGraphModelBuilder:
     def __init__(self, config: kg_loader.LoaderConfig, ontology: kg_loader.OntologyCatalog) -> None:
@@ -155,6 +178,8 @@ class ExpectedGraphModelBuilder:
                     )
                     self._merge_property(record.properties, "external_id", external_id, "String", "SINGLE")
                     self._merge_property(record.properties, "ontology_iri", class_mapping.iri, "String", "SINGLE")
+                    for rdf_type_iri in sorted(self.ontology.class_lineage(class_mapping.iri)):
+                        self._merge_property(record.properties, "rdf_types", rdf_type_iri, "String", "SET")
                     self._merge_property(
                         record.properties,
                         "source_table",
@@ -210,6 +235,20 @@ class ExpectedGraphModelBuilder:
                     )
                     self._merge_property(record.properties, "edge_external_id", edge_external_id, "String", "SINGLE")
                     self._merge_property(record.properties, "ontology_iri", relationship.iri, "String", "SINGLE")
+                    self._merge_property(
+                        record.properties,
+                        "ontology_property_lineage",
+                        kg_loader.encode_sorted_string_set(self.ontology.property_lineage(relationship.iri)),
+                        "String",
+                        "SINGLE",
+                    )
+                    self._merge_property(
+                        record.properties,
+                        "ontology_inverse_property_iris",
+                        kg_loader.encode_sorted_string_set(self.ontology.inverse_properties_for(relationship.iri)),
+                        "String",
+                        "SINGLE",
+                    )
                     self._merge_property(
                         record.properties,
                         "source_table",
@@ -347,11 +386,39 @@ class LoadedGraphIntegrationTests(unittest.TestCase):
         cls.expected_edge_counts = Counter(item.label for item in cls.expected_edges.values())
         cls.class_mappings_by_label = {item.resolved_vertex_label(): item for item in cls.config.classes}
         cls.relationship_mappings_by_label = {item.resolved_edge_label(): item for item in cls.config.relationships}
+        cls.expected_vertex_ids_by_label = {
+            label: sorted(item.external_id for item in cls.expected_vertices.values() if item.label == label)
+            for label in cls.class_mappings_by_label
+        }
 
     @classmethod
     def tearDownClass(cls) -> None:
         cls.builder.close()
         cls.graph.close()
+
+    @classmethod
+    def _resolve_vertex_property_mapping(
+        cls,
+        class_mapping: kg_loader.ClassMapping,
+        restriction: kg_loader.OntologyRestriction,
+    ) -> kg_loader.PropertyMapping | None:
+        for prop in class_mapping.properties:
+            if restriction.property_iri in cls.ontology.property_lineage(prop.iri):
+                return prop
+        return None
+
+    @classmethod
+    def _resolve_relationship_mapping(
+        cls,
+        class_mapping: kg_loader.ClassMapping,
+        restriction: kg_loader.OntologyRestriction,
+    ) -> kg_loader.RelationshipMapping | None:
+        for relationship in cls.config.relationships:
+            if relationship.source_class_iri != class_mapping.iri:
+                continue
+            if restriction.property_iri in cls.ontology.property_lineage(relationship.iri):
+                return relationship
+        return None
 
     def test_janusgraph_is_reachable(self) -> None:
         self.assertEqual(self.graph.ping(), "ok")
@@ -365,6 +432,17 @@ class LoadedGraphIntegrationTests(unittest.TestCase):
         for label, expected_count in sorted(self.expected_edge_counts.items()):
             with self.subTest(label=label):
                 self.assertEqual(self.graph.count_edges(label), expected_count)
+
+    def test_subclass_and_equivalent_class_queries_work_via_rdf_types(self) -> None:
+        expected_counts = {
+            "https://example.com/ontology/bank#Party": 8,
+            "https://example.com/ontology/bank#FinancialProduct": 12,
+            "https://example.com/ontology/bank#FinancialEvent": 6,
+            "https://example.com/ontology/bank#Client": 3,
+        }
+        for rdf_type_iri, expected_count in sorted(expected_counts.items()):
+            with self.subTest(rdf_type_iri=rdf_type_iri):
+                self.assertEqual(self.graph.count_vertices_with_rdf_type(rdf_type_iri), expected_count)
 
     def test_vertex_ontology_metadata_matches_mapping(self) -> None:
         for label, class_mapping in sorted(self.class_mappings_by_label.items()):
@@ -465,6 +543,82 @@ class LoadedGraphIntegrationTests(unittest.TestCase):
             with self.subTest(edge_label=edge_label):
                 actual_count = self.graph.count_edges_with_end_labels(edge_label, out_label, in_label)
                 self.assertEqual(actual_count, expected_count)
+
+    def test_loaded_graph_satisfies_supported_ontology_restrictions(self) -> None:
+        for class_mapping in self.config.classes:
+            vertex_ids = self.expected_vertex_ids_by_label[class_mapping.resolved_vertex_label()]
+            restrictions = self.ontology.restrictions_for_class(class_mapping.iri)
+            for restriction in restrictions:
+                vertex_property_mapping = self._resolve_vertex_property_mapping(class_mapping, restriction)
+                relationship_mapping = self._resolve_relationship_mapping(class_mapping, restriction)
+
+                if vertex_property_mapping is None and relationship_mapping is None:
+                    continue
+
+                for vertex_external_id in vertex_ids:
+                    with self.subTest(
+                        class_iri=class_mapping.iri,
+                        vertex_external_id=vertex_external_id,
+                        restriction=restriction.constraint_type,
+                        property_iri=restriction.property_iri,
+                    ):
+                        if vertex_property_mapping is not None:
+                            actual_vertex = self.graph.fetch_vertex(vertex_external_id)
+                            self.assertIsNotNone(actual_vertex)
+                            property_key = vertex_property_mapping.resolved_property_key()
+                            expected_property = ExpectedProperty(
+                                data_type=self.builder._resolve_data_type(vertex_property_mapping),
+                                cardinality=vertex_property_mapping.cardinality,
+                                value=None,
+                            )
+                            actual_values = actual_vertex["props"].get(property_key, [])
+                            normalized_values = actual_values if isinstance(actual_values, list) else [actual_values]
+                            normalized_values = [
+                                normalize_graph_scalar(value, expected_property.data_type) for value in normalized_values
+                            ]
+
+                            if restriction.constraint_type == "min_cardinality" and restriction.cardinality is not None:
+                                self.assertGreaterEqual(len(normalized_values), restriction.cardinality)
+                            elif restriction.constraint_type == "max_cardinality" and restriction.cardinality is not None:
+                                self.assertLessEqual(len(normalized_values), restriction.cardinality)
+                            elif restriction.constraint_type == "exact_cardinality" and restriction.cardinality is not None:
+                                self.assertEqual(len(normalized_values), restriction.cardinality)
+                            elif restriction.constraint_type == "some_values_from":
+                                self.assertGreaterEqual(len(normalized_values), 1)
+                            elif restriction.constraint_type == "all_values_from":
+                                self.assertTrue(normalized_values)
+                            elif restriction.constraint_type == "has_value":
+                                expected_value = restriction.has_value
+                                if restriction.filler_data_type:
+                                    expected_value = kg_loader.coerce_value_for_transport(
+                                        restriction.has_value,
+                                        restriction.filler_data_type,
+                                    )
+                                self.assertIn(expected_value, normalized_values)
+                        else:
+                            assert relationship_mapping is not None
+                            edge_label = relationship_mapping.resolved_edge_label()
+                            edge_count = self.graph.outgoing_edge_count(vertex_external_id, edge_label)
+                            targets = self.graph.outgoing_targets(vertex_external_id, edge_label)
+
+                            if restriction.constraint_type == "min_cardinality" and restriction.cardinality is not None:
+                                self.assertGreaterEqual(edge_count, restriction.cardinality)
+                            elif restriction.constraint_type == "max_cardinality" and restriction.cardinality is not None:
+                                self.assertLessEqual(edge_count, restriction.cardinality)
+                            elif restriction.constraint_type == "exact_cardinality" and restriction.cardinality is not None:
+                                self.assertEqual(edge_count, restriction.cardinality)
+                            elif restriction.constraint_type == "some_values_from":
+                                self.assertGreaterEqual(edge_count, 1)
+                                if restriction.filler_iri:
+                                    self.assertTrue(
+                                        any(restriction.filler_iri in target.get("rdf_types", []) for target in targets),
+                                        f"Expected at least one {edge_label} target of type {restriction.filler_iri}",
+                                    )
+                            elif restriction.constraint_type == "all_values_from" and restriction.filler_iri:
+                                self.assertTrue(
+                                    all(restriction.filler_iri in target.get("rdf_types", []) for target in targets),
+                                    f"All {edge_label} targets should have rdf:type {restriction.filler_iri}",
+                                )
 
 
 if __name__ == "__main__":

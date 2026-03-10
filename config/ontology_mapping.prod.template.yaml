@@ -352,7 +352,7 @@ relationships:
     source_class_iri: https://example.com/ontology/bank#Account
     target_class_iri: https://example.com/ontology/bank#Branch
     id_template: issuedByBranch:{account_id}:{branch_id}
-    multiplicity: SIMPLE
+    multiplicity: MANY2ONE
     source:
       table: EDW.account_dim
       from_column: account_id
@@ -364,7 +364,7 @@ relationships:
     source_class_iri: https://example.com/ontology/bank#Account
     target_class_iri: https://example.com/ontology/bank#Employee
     id_template: managedByEmployee:{account_id}:{employee_id}
-    multiplicity: SIMPLE
+    multiplicity: MANY2ONE
     source:
       table: EDW.account_dim
       from_column: account_id
@@ -376,7 +376,7 @@ relationships:
     source_class_iri: https://example.com/ontology/bank#Account
     target_class_iri: https://example.com/ontology/bank#Product
     id_template: belongsToProduct:{account_id}:{product_id}
-    multiplicity: SIMPLE
+    multiplicity: MANY2ONE
     source:
       table: EDW.account_dim
       from_column: account_id
@@ -388,7 +388,7 @@ relationships:
     source_class_iri: https://example.com/ontology/bank#Employee
     target_class_iri: https://example.com/ontology/bank#Branch
     id_template: worksAtBranch:{employee_id}:{branch_id}
-    multiplicity: SIMPLE
+    multiplicity: MANY2ONE
     source:
       table: EDW.employee_dim
       from_column: employee_id
@@ -400,7 +400,7 @@ relationships:
     source_class_iri: https://example.com/ontology/bank#Account
     target_class_iri: https://example.com/ontology/bank#Card
     id_template: hasCard:{account_id}:{card_id}
-    multiplicity: MULTI
+    multiplicity: ONE2MANY
     source:
       table: EDW.card_dim
       from_column: account_id
@@ -412,7 +412,7 @@ relationships:
     source_class_iri: https://example.com/ontology/bank#Customer
     target_class_iri: https://example.com/ontology/bank#Loan
     id_template: hasLoan:{customer_id}:{loan_id}
-    multiplicity: MULTI
+    multiplicity: ONE2MANY
     source:
       table: EDW.loan_dim
       from_column: customer_id
@@ -424,7 +424,7 @@ relationships:
     source_class_iri: https://example.com/ontology/bank#Account
     target_class_iri: https://example.com/ontology/bank#Transaction
     id_template: postedTransaction:{account_id}:{transaction_id}
-    multiplicity: MULTI
+    multiplicity: ONE2MANY
     source:
       table: EDW.transaction_fact
       from_column: account_id
@@ -436,7 +436,7 @@ relationships:
     source_class_iri: https://example.com/ontology/bank#Account
     target_class_iri: https://example.com/ontology/bank#Beneficiary
     id_template: beneficiaryForAccount:{account_id}:{beneficiary_id}
-    multiplicity: MULTI
+    multiplicity: ONE2MANY
     source:
       table: EDW.beneficiary
       from_column: account_id
@@ -448,7 +448,7 @@ relationships:
     source_class_iri: https://example.com/ontology/bank#Account
     target_class_iri: https://example.com/ontology/bank#Alert
     id_template: hasAlert:{account_id}:{alert_id}
-    multiplicity: MULTI
+    multiplicity: ONE2MANY
     source:
       table: EDW.alert_fact
       from_column: account_id

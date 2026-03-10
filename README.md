@@ -3,13 +3,14 @@
 This workspace contains a production-style loader that:
 
 - parses an OWL/RDFS ontology,
+- reasons over supported subclass, equivalent-class, subproperty, inverse-property, and cardinality semantics,
 - validates the ontology-to-physical mapping,
 - reads source data from either CSV files or Teradata,
 - creates missing JanusGraph schema objects idempotently,
 - upserts vertices, properties, and edges into JanusGraph,
 - supports secure JanusGraph deployments that use HBase + ZooKeeper with Kerberos and SSL.
 
-The main entry point is `kg_loader.py`.
+The main entry point remains `kg_loader.py`, which is now a thin wrapper around the modular `kg_loader/` package.
 
 For the full operational guide, see `docs/USAGE_GUIDE.md`.
 
@@ -42,7 +43,9 @@ In other words, the Python loader handles ingestion; the JanusGraph server handl
 
 ## Files
 
-- `kg_loader.py` — full loader and CLI.
+- `kg_loader.py` — thin CLI shim kept for backward compatibility.
+- `kg_loader/` — modular loader package (`config.py`, `ontology.py`, `schema.py`, `data_clients.py`, `gremlin.py`, `loader.py`, `cli.py`, etc.).
+- `backups/kg_loader.monolith.backup.20260310.py` — backup of the pre-refactor monolithic implementation.
 - `run_kg_loader.sh` — Kerberos-aware wrapper that uses `~/anaconda3/bin/python3`.
 - `config/ontology_mapping.sample.yaml` — original sample ontology/physical mapping.
 - `config/ontology_mapping.test.yaml` — local CSV + in-memory JanusGraph test profile.
@@ -54,6 +57,7 @@ In other words, the Python loader handles ingestion; the JanusGraph server handl
 - `scripts/install_janusgraph_local.sh` — downloads and unpacks JanusGraph `1.1.0` locally.
 - `scripts/start_janusgraph_test.sh` / `scripts/stop_janusgraph_test.sh` — manage the local in-memory JanusGraph server.
 - `scripts/run_local_test_mode.sh` — runs the full local test-mode workflow.
+- `scripts/run_graph_validation_tests.sh` — reloads the local graph and runs the full local Python test suite.
 - `scripts/verify_graph_summary.py` — prints vertex/edge counts from the loaded graph.
 - `.env` — placeholder environment values you should fill in.
 - `tests/test_kg_loader.py` — lightweight regression tests.
@@ -119,6 +123,12 @@ You can also run Python directly:
 
 ```bash
 ~/anaconda3/bin/python3 kg_loader.py --mapping config/ontology_mapping.sample.yaml
+```
+
+Or as a module:
+
+```bash
+~/anaconda3/bin/python3 -m kg_loader --mapping config/ontology_mapping.sample.yaml
 ```
 
 ### Local test mode
@@ -196,10 +206,12 @@ The loader accepts a logical `Decimal` mapping type, but JanusGraph does not sup
 The included tests cover:
 
 - config loading and environment substitution,
+- ontology reasoning and ontology-aware mapping validation,
 - CSV source projection and alias handling,
 - schema plan generation,
 - query builder behavior,
-- template rendering.
+- template rendering,
+- live JanusGraph validation of subclass typing, domain/range compatibility, edge lineage metadata, and supported OWL restrictions.
 
 Run them with:
 
