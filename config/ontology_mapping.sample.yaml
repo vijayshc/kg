@@ -1,3 +1,36 @@
+# JanusGraph / Gremlin Server connection
+JANUSGRAPH_URL=wss://janusgraph-server.example.com:8182/gremlin
+JANUSGRAPH_TRAVERSAL_SOURCE=g
+JANUSGRAPH_GRAPH_ALIAS=graph
+JANUSGRAPH_USERNAME=
+JANUSGRAPH_PASSWORD=
+JANUSGRAPH_SSL_VERIFY=true
+JANUSGRAPH_SSL_CA_FILE=/path/to/ca.pem
+JANUSGRAPH_SSL_CERT_FILE=
+JANUSGRAPH_SSL_KEY_FILE=
+JANUSGRAPH_REQUEST_TIMEOUT_SECONDS=300
+
+# Teradata connectivity
+TERADATA_HOST=td-server.example.com
+TERADATA_DATABASE=
+TERADATA_USER=
+TERADATA_PASSWORD=
+TERADATA_LOGMECH=KRB5
+TERADATA_ENCRYPTDATA=true
+TERADATA_TMODE=ANSI
+TERADATA_LOGDATA=
+TERADATA_EXTRA_PARAMS={}
+
+# Optional Kerberos bootstrap for the shell wrapper
+TERADATA_KRB5_PRINCIPAL=user@EXAMPLE.COM
+TERADATA_KRB5_KEYTAB=/path/to/user.keytab
+
+# Loader defaults
+KG_BATCH_SIZE=500
+KG_STRICT_ONTOLOGY=true
+
+---
+
 ontology:
   file: ./ontology/enterprise.owl
   format: xml
