@@ -13,10 +13,17 @@ from .utils import as_bool, validate_gremlin_identifier
 LOG = logging.getLogger("kg_loader")
 
 MANAGEMENT_SCRIPT_TEMPLATE = r'''
+import org.apache.tinkerpop.gremlin.process.traversal.Order
+import org.apache.tinkerpop.gremlin.structure.Direction
 import org.apache.tinkerpop.gremlin.structure.Edge
 import org.apache.tinkerpop.gremlin.structure.Vertex
 import org.janusgraph.core.Cardinality
+import org.janusgraph.core.Connection
 import org.janusgraph.core.Multiplicity
+import org.janusgraph.core.PropertyKey
+import org.janusgraph.core.schema.Mapping
+import org.janusgraph.core.schema.Parameter
+import org.janusgraph.graphdb.types.ParameterType
 
 def resolveClass = { typeName ->
   switch ((typeName ?: 'String').toUpperCase()) {
@@ -51,6 +58,79 @@ def resolveMultiplicity = { value ->
   }
 }
 
+def resolveDirection = { value ->
+  switch ((value ?: 'BOTH').toUpperCase()) {
+    case 'IN': return Direction.IN
+    case 'OUT': return Direction.OUT
+    default: return Direction.BOTH
+  }
+}
+
+def resolveOrder = { value ->
+  if (value == null) {
+    return null
+  }
+  switch ((value ?: 'asc').toLowerCase()) {
+    case 'desc': return Order.desc
+    default: return Order.asc
+  }
+}
+
+def buildIndexKeyParameters = { keySpec ->
+  def params = []
+  if (keySpec.mapping != null) {
+    params << Mapping.valueOf(keySpec.mapping.toString().toUpperCase()).asParameter()
+  }
+  if (keySpec.mapped_name != null) {
+    params << Parameter.of(ParameterType.MAPPED_NAME.getName(), keySpec.mapped_name.toString())
+  }
+  if (keySpec.string_analyzer != null) {
+    params << Parameter.of(ParameterType.STRING_ANALYZER.getName(), keySpec.string_analyzer.toString())
+  }
+  if (keySpec.text_analyzer != null) {
+    params << Parameter.of(ParameterType.TEXT_ANALYZER.getName(), keySpec.text_analyzer.toString())
+  }
+  if (keySpec.geo_max_levels != null) {
+    params << Parameter.of(ParameterType.INDEX_GEO_MAX_LEVELS.getName(), keySpec.geo_max_levels)
+  }
+  if (keySpec.geo_dist_error_pct != null) {
+    params << Parameter.of(ParameterType.INDEX_GEO_DIST_ERROR_PCT.getName(), keySpec.geo_dist_error_pct)
+  }
+  (keySpec.custom_parameters ?: [:]).each { parameterName, parameterValue ->
+    params << Parameter.of(ParameterType.customParameterName(parameterName.toString()), parameterValue)
+  }
+  return params as Object[]
+}
+
+def buildGraphIndex = { spec, elementClass, labelResolver ->
+  def builder = mgmt.buildIndex(spec.name, elementClass)
+  (spec.keys ?: []).each { keySpec ->
+    def key = mgmt.getPropertyKey(keySpec.property_key)
+    def params = buildIndexKeyParameters(keySpec)
+    if (params.length > 0) {
+      builder.addKey(key, *params)
+    } else {
+      builder.addKey(key)
+    }
+  }
+  if (spec.index_only != null) {
+    builder.indexOnly(labelResolver(spec.index_only))
+  }
+  if (((spec.kind ?: 'composite').toString()).equalsIgnoreCase('mixed')) {
+    builder.buildMixedIndex(spec.backend.toString())
+  } else {
+    if (spec.unique) {
+      builder.unique()
+    }
+    builder.buildCompositeIndex()
+  }
+}
+
+def createdGraphIndexes = []
+def createdRelationIndexes = []
+def appliedVertexPropertyConstraints = []
+def appliedEdgePropertyConstraints = []
+def appliedConnectionConstraints = []
 mgmt = __GRAPH_ALIAS__.openManagement()
 try {
   schema.property_keys.each { spec ->
@@ -76,25 +156,80 @@ try {
     }
   }
 
+  if (createSchemaConstraints) {
+    schema.vertex_property_constraints.each { spec ->
+      def label = mgmt.getVertexLabel(spec.label)
+      def existing = ((label?.mappedProperties() ?: []) as Collection).collect { it.name() } as Set
+      def missing = spec.property_keys.findAll { !existing.contains(it) }.collect { mgmt.getPropertyKey(it) }
+      if (!missing.isEmpty()) {
+        mgmt.addProperties(label, *(missing as PropertyKey[]))
+        appliedVertexPropertyConstraints << [label: spec.label, property_keys: missing.collect { it.name() }]
+      }
+    }
+
+    schema.edge_property_constraints.each { spec ->
+      def edgeLabel = mgmt.getEdgeLabel(spec.label)
+      def existing = ((edgeLabel?.mappedProperties() ?: []) as Collection).collect { it.name() } as Set
+      def missing = spec.property_keys.findAll { !existing.contains(it) }.collect { mgmt.getPropertyKey(it) }
+      if (!missing.isEmpty()) {
+        mgmt.addProperties(edgeLabel, *(missing as PropertyKey[]))
+        appliedEdgePropertyConstraints << [label: spec.label, property_keys: missing.collect { it.name() }]
+      }
+    }
+
+    schema.connection_constraints.each { spec ->
+      def edgeLabel = mgmt.getEdgeLabel(spec.edge_label)
+      def outLabel = mgmt.getVertexLabel(spec.out_label)
+      def inLabel = mgmt.getVertexLabel(spec.in_label)
+      def exists = ((edgeLabel?.mappedConnections() ?: []) as Collection).any { Connection connection ->
+        connection.getOutgoingVertexLabel().name() == spec.out_label && connection.getIncomingVertexLabel().name() == spec.in_label
+      }
+      if (!exists) {
+        mgmt.addConnection(edgeLabel, outLabel, inLabel)
+        appliedConnectionConstraints << [edge_label: spec.edge_label, out_label: spec.out_label, in_label: spec.in_label]
+      }
+    }
+  }
+
   schema.vertex_indexes.each { spec ->
     if (mgmt.getGraphIndex(spec.name) == null) {
-      def key = mgmt.getPropertyKey(spec.property_key)
-      def builder = mgmt.buildIndex(spec.name, Vertex.class).addKey(key)
-      if (spec.unique) {
-        builder.unique()
-      }
-      builder.buildCompositeIndex()
+      buildGraphIndex(spec, Vertex.class, { labelName -> mgmt.getVertexLabel(labelName) })
+      createdGraphIndexes << spec.name
     }
   }
 
   schema.edge_indexes.each { spec ->
     if (mgmt.getGraphIndex(spec.name) == null) {
-      def key = mgmt.getPropertyKey(spec.property_key)
-      def builder = mgmt.buildIndex(spec.name, Edge.class).addKey(key)
-      if (spec.unique) {
-        builder.unique()
+      buildGraphIndex(spec, Edge.class, { labelName -> mgmt.getEdgeLabel(labelName) })
+      createdGraphIndexes << spec.name
+    }
+  }
+
+  schema.edge_relation_indexes.each { spec ->
+    def edgeLabel = mgmt.getEdgeLabel(spec.edge_label)
+    if (!mgmt.containsRelationIndex(edgeLabel, spec.name)) {
+      def propertyKeys = spec.property_keys.collect { mgmt.getPropertyKey(it) } as PropertyKey[]
+      def order = resolveOrder(spec.sort_order)
+      if (order != null) {
+        mgmt.buildEdgeIndex(edgeLabel, spec.name, resolveDirection(spec.direction), order, *propertyKeys)
+      } else {
+        mgmt.buildEdgeIndex(edgeLabel, spec.name, resolveDirection(spec.direction), *propertyKeys)
       }
-      builder.buildCompositeIndex()
+      createdRelationIndexes << [name: spec.name, relation_type: spec.edge_label, relation_kind: 'edge']
+    }
+  }
+
+  schema.property_relation_indexes.each { spec ->
+    def propertyKey = mgmt.getPropertyKey(spec.property_key)
+    if (!mgmt.containsRelationIndex(propertyKey, spec.name)) {
+      def metaPropertyKeys = spec.meta_property_keys.collect { mgmt.getPropertyKey(it) } as PropertyKey[]
+      def order = resolveOrder(spec.sort_order)
+      if (order != null) {
+        mgmt.buildPropertyIndex(propertyKey, spec.name, order, *metaPropertyKeys)
+      } else {
+        mgmt.buildPropertyIndex(propertyKey, spec.name, *metaPropertyKeys)
+      }
+      createdRelationIndexes << [name: spec.name, relation_type: spec.property_key, relation_kind: 'property']
     }
   }
 
@@ -106,7 +241,182 @@ try {
   }
   throw t
 }
-return 'schema-ok'
+return [
+  created_graph_indexes: createdGraphIndexes,
+  created_relation_indexes: createdRelationIndexes,
+  applied_vertex_property_constraints: appliedVertexPropertyConstraints,
+  applied_edge_property_constraints: appliedEdgePropertyConstraints,
+  applied_connection_constraints: appliedConnectionConstraints,
+]
+'''
+
+AWAIT_GRAPH_INDEX_STATUS_SCRIPT = r'''
+import org.janusgraph.core.schema.SchemaStatus
+import org.janusgraph.graphdb.database.management.ManagementSystem
+
+def desiredStatuses = (statuses ?: []).collect { SchemaStatus.valueOf(it.toString()) }
+def reports = []
+indexNames.each { indexName ->
+  def waiter = ManagementSystem.awaitGraphIndexStatus(__GRAPH_ALIAS__, indexName)
+  def report = desiredStatuses ? waiter.status(*desiredStatuses).call() : waiter.call()
+  reports << String.valueOf(report)
+}
+return reports
+'''
+
+AWAIT_RELATION_INDEX_STATUS_SCRIPT = r'''
+import org.janusgraph.core.schema.SchemaStatus
+import org.janusgraph.graphdb.database.management.ManagementSystem
+
+def desiredStatuses = (statuses ?: []).collect { SchemaStatus.valueOf(it.toString()) }
+def reports = []
+relationIndexes.each { spec ->
+  def waiter = ManagementSystem.awaitRelationIndexStatus(__GRAPH_ALIAS__, spec.name.toString(), spec.relation_type.toString())
+  def report = desiredStatuses ? waiter.status(*desiredStatuses).call() : waiter.call()
+  reports << String.valueOf(report)
+}
+return reports
+'''
+
+UPDATE_GRAPH_INDEX_SCRIPT = r'''
+import org.janusgraph.core.schema.SchemaAction
+
+def actionEnum = SchemaAction.valueOf(action.toString())
+mgmt = __GRAPH_ALIAS__.openManagement()
+try {
+  indexNames.each { indexName ->
+    def index = mgmt.getGraphIndex(indexName)
+    if (index == null) {
+      return
+    }
+    if (actionEnum == SchemaAction.REINDEX && concurrency != null && concurrency > 0) {
+      mgmt.updateIndex(index, actionEnum, concurrency).get()
+    } else {
+      mgmt.updateIndex(index, actionEnum).get()
+    }
+  }
+  mgmt.commit()
+} catch (Throwable t) {
+  try {
+    mgmt.rollback()
+  } catch (Throwable ignored) {
+  }
+  throw t
+}
+return indexNames
+'''
+
+UPDATE_RELATION_INDEX_SCRIPT = r'''
+import org.janusgraph.core.schema.SchemaAction
+
+def actionEnum = SchemaAction.valueOf(action.toString())
+mgmt = __GRAPH_ALIAS__.openManagement()
+try {
+  relationIndexes.each { spec ->
+    def relationType = mgmt.getRelationType(spec.relation_type.toString())
+    def index = relationType == null ? null : mgmt.getRelationIndex(relationType, spec.name.toString())
+    if (index == null) {
+      return
+    }
+    if (actionEnum == SchemaAction.REINDEX && concurrency != null && concurrency > 0) {
+      mgmt.updateIndex(index, actionEnum, concurrency).get()
+    } else {
+      mgmt.updateIndex(index, actionEnum).get()
+    }
+  }
+  mgmt.commit()
+} catch (Throwable t) {
+  try {
+    mgmt.rollback()
+  } catch (Throwable ignored) {
+  }
+  throw t
+}
+return relationIndexes.collect { it.name }
+'''
+
+LIST_GRAPH_INDEXES_SCRIPT = r'''
+mgmt = __GRAPH_ALIAS__.openManagement()
+try {
+  return indexNames.collect { indexName ->
+    def index = mgmt.getGraphIndex(indexName)
+    if (index == null) {
+      return null
+    }
+    def statuses = [:]
+    index.getFieldKeys().each { key ->
+      statuses[key.name()] = String.valueOf(index.getIndexStatus(key))
+    }
+    def payload = [
+      name: index.name(),
+      property_keys: index.getFieldKeys().collect { it.name() },
+      statuses: statuses,
+      kind: index.isMixedIndex() ? 'mixed' : 'composite'
+    ]
+    if (index.isMixedIndex()) {
+      payload.backend = index.getBackingIndex()
+    }
+    def indexOnly = mgmt.getIndexOnlyConstraint(index.name())
+    if (indexOnly != null) {
+      payload.index_only = indexOnly.name()
+    }
+    return payload
+  }.findAll { it != null }
+} finally {
+  mgmt.rollback()
+}
+'''
+
+LIST_RELATION_INDEXES_SCRIPT = r'''
+mgmt = __GRAPH_ALIAS__.openManagement()
+try {
+  return relationIndexes.collect { spec ->
+    def relationType = mgmt.getRelationType(spec.relation_type.toString())
+    def index = relationType == null ? null : mgmt.getRelationIndex(relationType, spec.name.toString())
+    if (index == null) {
+      return null
+    }
+    return [
+      name: index.name(),
+      relation_type: spec.relation_type,
+      relation_kind: spec.relation_kind,
+      property_keys: index.getSortKey().collect { it.name() },
+      direction: String.valueOf(index.getDirection()),
+      sort_order: String.valueOf(index.getSortOrder()),
+      status: String.valueOf(index.getIndexStatus()),
+    ]
+  }.findAll { it != null }
+} finally {
+  mgmt.rollback()
+}
+'''
+
+LIST_SCHEMA_CONSTRAINTS_SCRIPT = r'''
+mgmt = __GRAPH_ALIAS__.openManagement()
+try {
+  return [
+    vertex_property_constraints: vertexLabels.collect { labelName ->
+      def label = mgmt.getVertexLabel(labelName)
+      [label: labelName, property_keys: ((label?.mappedProperties() ?: []) as Collection).collect { it.name() }.sort()]
+    },
+    edge_property_constraints: edgeLabels.collect { labelName ->
+      def edgeLabel = mgmt.getEdgeLabel(labelName)
+      [label: labelName, property_keys: ((edgeLabel?.mappedProperties() ?: []) as Collection).collect { it.name() }.sort()]
+    },
+    connection_constraints: edgeLabels.collectMany { labelName ->
+      def edgeLabel = mgmt.getEdgeLabel(labelName)
+      ((edgeLabel?.mappedConnections() ?: []) as Collection).collect { connection ->
+        [
+          edge_label: labelName,
+          out_label: connection.getOutgoingVertexLabel().name(),
+          in_label: connection.getIncomingVertexLabel().name(),
+        ]
+      }
+    },
+  ]
+} finally {
+  mgmt.rollback()
+}
 '''
 
 VERTEX_BATCH_SCRIPT = r'''
@@ -138,15 +448,31 @@ def cardinality = { value ->
   }
 }
 
+def buildMetaKeyValues = { metaProperties ->
+  def keyValues = []
+  (metaProperties ?: []).each { meta ->
+    if (meta.value != null) {
+      keyValues << meta.key
+      keyValues << coerce(meta.value, meta.data_type)
+    }
+  }
+  return keyValues as Object[]
+}
+
 def processed = 0
 rows.each { row ->
-    def vertex = g.V().hasLabel(vertexLabel).has(idKey, row.external_id).fold()
-            .coalesce(unfold(), addV(vertexLabel).property(VertexProperty.Cardinality.single, idKey, row.external_id))
+  def vertex = g.V().hasLabel(vertexLabel).has(idKey, row.external_id).fold()
+      .coalesce(unfold(), addV(vertexLabel).property(VertexProperty.Cardinality.single, idKey, row.external_id))
       .next()
 
   row.properties.each { prop ->
     if (prop.value != null) {
-      vertex.property(cardinality(prop.cardinality), prop.key, coerce(prop.value, prop.data_type))
+      def metaKeyValues = buildMetaKeyValues(prop.meta_properties)
+      if (metaKeyValues.length > 0) {
+        vertex.property(cardinality(prop.cardinality), prop.key, coerce(prop.value, prop.data_type), *metaKeyValues)
+      } else {
+        vertex.property(cardinality(prop.cardinality), prop.key, coerce(prop.value, prop.data_type))
+      }
     }
   }
   processed++
@@ -183,10 +509,21 @@ def cardinality = { value ->
   }
 }
 
+def buildMetaKeyValues = { metaProperties ->
+  def keyValues = []
+  (metaProperties ?: []).each { meta ->
+    if (meta.value != null) {
+      keyValues << meta.key
+      keyValues << coerce(meta.value, meta.data_type)
+    }
+  }
+  return keyValues as Object[]
+}
+
 def processed = 0
 def missing = 0
 rows.each { row ->
-    def vertex = g.V().hasLabel(vertexLabel).has(idKey, row.external_id).tryNext().orElse(null)
+  def vertex = g.V().hasLabel(vertexLabel).has(idKey, row.external_id).tryNext().orElse(null)
   if (vertex == null) {
     missing++
     return
@@ -194,7 +531,12 @@ rows.each { row ->
 
   row.properties.each { prop ->
     if (prop.value != null) {
-      vertex.property(cardinality(prop.cardinality), prop.key, coerce(prop.value, prop.data_type))
+      def metaKeyValues = buildMetaKeyValues(prop.meta_properties)
+      if (metaKeyValues.length > 0) {
+        vertex.property(cardinality(prop.cardinality), prop.key, coerce(prop.value, prop.data_type), *metaKeyValues)
+      } else {
+        vertex.property(cardinality(prop.cardinality), prop.key, coerce(prop.value, prop.data_type))
+      }
     }
   }
   processed++
@@ -334,18 +676,165 @@ class JanusGraphClient:
             )
             raise
 
-    def ensure_schema(self, schema_plan: SchemaPlan) -> None:
+    def ensure_schema(self, schema_plan: SchemaPlan) -> Dict[str, Any]:
         LOG.info(
             "Ensuring JanusGraph schema: %s vertex labels, %s edge labels, %s property keys",
             len(schema_plan.vertex_labels),
             len(schema_plan.edge_labels),
             len(schema_plan.property_keys),
         )
-        self.submit(
+        result = self.submit(
             build_management_script(self.settings.graph_alias),
-            bindings={"schema": schema_plan.as_binding()},
+            bindings={
+                "schema": schema_plan.as_binding(),
+                "createSchemaConstraints": self.settings.create_schema_constraints,
+            },
             include_graph=True,
         )
+        summary = dict(result[0]) if result else {}
+
+        planned_graph_index_names = [
+            *schema_plan.vertex_indexes.keys(),
+            *schema_plan.edge_indexes.keys(),
+        ]
+        planned_relation_indexes = [
+            *[
+                {"name": item.name, "relation_type": item.edge_label, "relation_kind": "edge"}
+                for item in schema_plan.edge_relation_indexes.values()
+            ],
+            *[
+                {"name": item.name, "relation_type": item.property_key, "relation_kind": "property"}
+                for item in schema_plan.property_relation_indexes.values()
+            ],
+        ]
+
+        summary["index_activation_mode"] = self.settings.index_activation_mode
+        summary["relation_index_activation_mode"] = self.settings.relation_index_activation_mode
+
+        if planned_graph_index_names and self.settings.index_activation_mode != "skip":
+            self.await_graph_indexes(planned_graph_index_names, ["REGISTERED", "ENABLED"])
+            graph_index_details = self.list_graph_indexes(planned_graph_index_names)
+            indexes_to_activate = [
+                item["name"]
+                for item in graph_index_details
+                if any(status != "ENABLED" for status in item.get("statuses", {}).values())
+            ]
+            if indexes_to_activate:
+                action = "REINDEX" if self.settings.index_activation_mode == "reindex" else "ENABLE_INDEX"
+                self.update_graph_indexes(indexes_to_activate, action, self.settings.index_reindex_concurrency)
+                self.await_graph_indexes(indexes_to_activate, ["ENABLED"])
+            summary["activated_graph_indexes"] = indexes_to_activate
+        else:
+            summary["activated_graph_indexes"] = []
+        summary["graph_indexes"] = self.list_graph_indexes(planned_graph_index_names)
+
+        if planned_relation_indexes and self.settings.relation_index_activation_mode != "skip":
+            self.await_relation_indexes(planned_relation_indexes, ["REGISTERED", "ENABLED"])
+            relation_index_details = self.list_relation_indexes(planned_relation_indexes)
+            relation_indexes_to_activate = [
+                item
+                for item in relation_index_details
+                if item.get("status") != "ENABLED"
+            ]
+            if relation_indexes_to_activate:
+                action = (
+                    "REINDEX"
+                    if self.settings.relation_index_activation_mode == "reindex"
+                    else "ENABLE_INDEX"
+                )
+                self.update_relation_indexes(
+                    relation_indexes_to_activate,
+                    action,
+                    self.settings.relation_index_reindex_concurrency,
+                )
+                self.await_relation_indexes(relation_indexes_to_activate, ["ENABLED"])
+            summary["activated_relation_indexes"] = [item["name"] for item in relation_indexes_to_activate]
+        else:
+            summary["activated_relation_indexes"] = []
+        summary["relation_indexes"] = self.list_relation_indexes(planned_relation_indexes)
+
+        summary["schema_constraints"] = self.list_schema_constraints(
+            list(schema_plan.vertex_labels.keys()),
+            list(schema_plan.edge_labels.keys()),
+        )
+        return summary
+
+    def await_graph_indexes(self, index_names: List[str], statuses: List[str]) -> List[Any]:
+        if not index_names:
+            return []
+        return self.submit(
+            AWAIT_GRAPH_INDEX_STATUS_SCRIPT.replace("__GRAPH_ALIAS__", self.settings.graph_alias),
+            bindings={"indexNames": index_names, "statuses": statuses},
+            include_graph=True,
+        )
+
+    def await_relation_indexes(self, relation_indexes: List[Dict[str, Any]], statuses: List[str]) -> List[Any]:
+        if not relation_indexes:
+            return []
+        return self.submit(
+            AWAIT_RELATION_INDEX_STATUS_SCRIPT.replace("__GRAPH_ALIAS__", self.settings.graph_alias),
+            bindings={"relationIndexes": relation_indexes, "statuses": statuses},
+            include_graph=True,
+        )
+
+    def update_graph_indexes(self, index_names: List[str], action: str, concurrency: int = 0) -> List[Any]:
+        if not index_names:
+            return []
+        return self.submit(
+            UPDATE_GRAPH_INDEX_SCRIPT.replace("__GRAPH_ALIAS__", self.settings.graph_alias),
+            bindings={"indexNames": index_names, "action": action, "concurrency": concurrency},
+            include_graph=True,
+        )
+
+    def update_relation_indexes(
+        self,
+        relation_indexes: List[Dict[str, Any]],
+        action: str,
+        concurrency: int = 0,
+    ) -> List[Any]:
+        if not relation_indexes:
+            return []
+        return self.submit(
+            UPDATE_RELATION_INDEX_SCRIPT.replace("__GRAPH_ALIAS__", self.settings.graph_alias),
+            bindings={"relationIndexes": relation_indexes, "action": action, "concurrency": concurrency},
+            include_graph=True,
+        )
+
+    def list_graph_indexes(self, index_names: List[str]) -> List[Dict[str, Any]]:
+        if not index_names:
+            return []
+        result = self.submit(
+            LIST_GRAPH_INDEXES_SCRIPT.replace("__GRAPH_ALIAS__", self.settings.graph_alias),
+            bindings={"indexNames": index_names},
+            include_graph=True,
+        )
+        if len(result) == 1 and isinstance(result[0], list):
+            result = result[0]
+        return [dict(item) for item in result]
+
+    def list_relation_indexes(self, relation_indexes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        if not relation_indexes:
+            return []
+        result = self.submit(
+            LIST_RELATION_INDEXES_SCRIPT.replace("__GRAPH_ALIAS__", self.settings.graph_alias),
+            bindings={"relationIndexes": relation_indexes},
+            include_graph=True,
+        )
+        if len(result) == 1 and isinstance(result[0], list):
+            result = result[0]
+        return [dict(item) for item in result]
+
+    def list_schema_constraints(self, vertex_labels: List[str], edge_labels: List[str]) -> Dict[str, Any]:
+        result = self.submit(
+            LIST_SCHEMA_CONSTRAINTS_SCRIPT.replace("__GRAPH_ALIAS__", self.settings.graph_alias),
+            bindings={"vertexLabels": vertex_labels, "edgeLabels": edge_labels},
+            include_graph=True,
+        )
+        summary = dict(result[0]) if result else {}
+        summary.setdefault("vertex_property_constraints", [])
+        summary.setdefault("edge_property_constraints", [])
+        summary.setdefault("connection_constraints", [])
+        return summary
 
     def upsert_vertex_batch(self, label: str, rows: List[Dict[str, Any]]) -> int:
         if not rows:

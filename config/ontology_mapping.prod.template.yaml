@@ -8,7 +8,13 @@ janusgraph:
   traversal_source: ${JANUSGRAPH_TRAVERSAL_SOURCE:-g}
   graph_alias: ${JANUSGRAPH_GRAPH_ALIAS:-graph}
   create_schema: true
+  create_schema_constraints: true
   request_timeout_seconds: ${JANUSGRAPH_REQUEST_TIMEOUT_SECONDS:-300}
+  index_activation_mode: ${JANUSGRAPH_INDEX_ACTIVATION_MODE:-reindex}
+  index_reindex_concurrency: ${JANUSGRAPH_INDEX_REINDEX_CONCURRENCY:-0}
+  relation_index_activation_mode: ${JANUSGRAPH_RELATION_INDEX_ACTIVATION_MODE:-reindex}
+  relation_index_reindex_concurrency: ${JANUSGRAPH_RELATION_INDEX_REINDEX_CONCURRENCY:-0}
+  emit_query_pattern_recommendations: true
 
 runtime:
   batch_size: ${KG_BATCH_SIZE:-500}
@@ -19,6 +25,99 @@ runtime:
 ingestion:
   mode: prod
   source_type: teradata
+
+indexes:
+  # Recommended pattern: add label-constrained composite indexes for exact-match lookups
+  # that drive your Gremlin entry points.
+  - name: customerByEmail
+    element: vertex
+    kind: composite
+    property_keys: [email]
+    index_only: Customer
+  - name: accountByAccountNumber
+    element: vertex
+    kind: composite
+    property_keys: [accountNumber]
+    unique: true
+    index_only: Account
+  - name: transactionByCodeAndDate
+    element: vertex
+    kind: composite
+    property_keys: [transactionCode, transactionDate]
+    index_only: Transaction
+  - name: ownsAccountByRelationshipType
+    element: edge
+    kind: composite
+    property_keys: [relationshipType]
+    index_only: ownsAccount
+  # Mixed index example for text/range search when a JanusGraph search backend is configured:
+  # - name: customerSearch
+  #   element: vertex
+  #   kind: mixed
+  #   backend: search
+  #   keys:
+  #     - property_key: customerName
+  #       mapping: TEXTSTRING
+  #       text_analyzer: english
+  #       string_analyzer: standard
+  #       custom_parameters:
+  #         boost: 5
+  #     - property_key: email
+  #       mapping: STRING
+  #       mapped_name: customer_email
+  #   index_only: Customer
+
+vertex_centric_indexes:
+  edge_indexes:
+    # Example for hot account -> transaction traversals filtered by duplicated edge properties.
+    - name: postedTransactionsByDebitAndDate
+      edge_label: postedTransaction
+      direction: OUT
+      sort_order: desc
+      property_keys: [debitCredit, transactionDateEdge]
+  property_indexes:
+    - name: balanceSnapshotByRecordedAt
+      property_key: balanceSnapshot
+      sort_order: desc
+      meta_property_keys: [balanceRecordedAt]
+
+query_patterns:
+  # Declarative hot paths used to recommend missing indexes.
+  - name: Customer Email Lookup
+    type: graph
+    element: vertex
+    label: Customer
+    predicates:
+      - property_key: email
+        operator: eq
+  - name: Customer Name Search
+    type: graph
+    element: vertex
+    label: Customer
+    predicates:
+      - property_key: customerName
+        operator: textContains
+  - name: Recent Debit Transactions By Account
+    type: traversal
+    start_label: Account
+    edge_label: postedTransaction
+    direction: OUT
+    predicates:
+      - property_key: debitCredit
+        operator: eq
+      - property_key: transactionDateEdge
+        operator: range
+    order_by: transactionDateEdge
+    order: desc
+    limit: 50
+  - name: Current Balance By Recorded At
+    type: property_meta
+    property_key: balanceSnapshot
+    predicates:
+      - property_key: balanceRecordedAt
+        operator: range
+    order_by: balanceRecordedAt
+    order: desc
 
 classes:
   - iri: https://example.com/ontology/bank#Customer
@@ -187,6 +286,18 @@ classes:
         property_key: currentBalance
         source_column: current_balance
         data_type: Decimal
+      - iri: https://example.com/ontology/bank#currentBalance
+        property_key: balanceSnapshot
+        source_column: current_balance
+        data_type: Decimal
+        cardinality: LIST
+        meta_properties:
+          - property_key: balanceRecordedAt
+            source_column: open_date
+            data_type: Date
+          - property_key: propertyOrigin
+            constant_value: EDW.account_dim.current_balance
+            data_type: String
       - iri: https://example.com/ontology/bank#currencyCode
         property_key: currencyCode
         source_column: currency_code
@@ -430,6 +541,19 @@ relationships:
       from_column: account_id
       to_column: transaction_id
       fetch_size: 1000
+    properties:
+      - iri: https://example.com/ontology/bank#transactionDate
+        property_key: transactionDateEdge
+        source_column: transaction_date
+        data_type: Date
+      - iri: https://example.com/ontology/bank#debitCredit
+        property_key: debitCredit
+        source_column: debit_credit
+        data_type: String
+      - iri: https://example.com/ontology/bank#channel
+        property_key: channel
+        source_column: channel
+        data_type: String
 
   - iri: https://example.com/ontology/bank#beneficiaryForAccount
     edge_label: beneficiaryForAccount

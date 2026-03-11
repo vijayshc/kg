@@ -11,6 +11,7 @@ cd "$ROOT_DIR"
 
 ~/anaconda3/bin/python3 scripts/generate_banking_sample_data.py
 bash scripts/install_janusgraph_local.sh
+bash scripts/stop_janusgraph_test.sh || true
 bash scripts/start_janusgraph_test.sh
 
 ~/anaconda3/bin/python3 -m pip install -r requirements.txt

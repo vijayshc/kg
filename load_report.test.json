@@ -1,5 +1,5 @@
 {
-  "batch_id": "20260310T135936Z",
+  "batch_id": "20260310T171355Z",
   "classes": {
     "Account": {
       "attribute_updates": 0,
@@ -231,8 +231,88 @@
     }
   },
   "dry_run": false,
-  "finished_at": "2026-03-10T13:59:36.693306Z",
+  "finished_at": "2026-03-10T17:14:00.120124Z",
   "mode": "test",
+  "query_pattern_recommendations": [
+    {
+      "category": "graph_index",
+      "covered_by": "customerByEmail",
+      "details": {
+        "element": "vertex",
+        "index_only": "Customer",
+        "keys": [
+          {
+            "property_key": "email"
+          }
+        ],
+        "kind": "composite",
+        "label": "Customer",
+        "pattern_type": "graph",
+        "property_keys": [
+          "email"
+        ]
+      },
+      "name": "Customer_Email_Lookup",
+      "rationale": "Graph lookup uses equality predicates that are a good fit for a composite graph index",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "details": {
+        "backend": "search",
+        "element": "vertex",
+        "index_only": "Customer",
+        "keys": [
+          {
+            "mapping": "TEXT",
+            "property_key": "customerName"
+          }
+        ],
+        "kind": "mixed",
+        "label": "Customer",
+        "pattern_type": "graph",
+        "property_keys": [
+          "customerName"
+        ]
+      },
+      "name": "Customer_Name_Search",
+      "rationale": "Graph lookup uses text/range/order predicates that benefit from a mixed index",
+      "status": "recommended"
+    },
+    {
+      "category": "edge_relation_index",
+      "covered_by": "postedTransactionsByDebitAndDate",
+      "details": {
+        "direction": "OUT",
+        "edge_label": "postedTransaction",
+        "pattern_type": "traversal",
+        "property_keys": [
+          "debitCredit",
+          "transactionDateEdge"
+        ],
+        "sort_order": "desc",
+        "start_label": "Account"
+      },
+      "name": "Recent_Debit_Transactions_By_Account",
+      "rationale": "Traversal filters or orders incident edges by edge properties; a vertex-centric edge index reduces in-memory filtering for high-degree vertices",
+      "status": "satisfied"
+    },
+    {
+      "category": "property_relation_index",
+      "covered_by": "balanceSnapshotByRecordedAt",
+      "details": {
+        "meta_property_keys": [
+          "balanceRecordedAt"
+        ],
+        "pattern_type": "property_meta",
+        "property_key": "balanceSnapshot",
+        "sort_order": "desc"
+      },
+      "name": "Current_Balance_By_Recorded_At",
+      "rationale": "Query traverses vertex properties by meta-properties; a JanusGraph property relation index speeds up meta-property lookups",
+      "status": "satisfied"
+    }
+  ],
   "relationships": {
     "belongsToProduct": {
       "edges_loaded": 3,
@@ -346,7 +426,10 @@
       "source": {
         "columns": [
           "account_id",
-          "transaction_id"
+          "transaction_id",
+          "transaction_date",
+          "debit_credit",
+          "channel"
         ],
         "table": "transaction_fact",
         "type": "csv"
@@ -367,10 +450,86 @@
     }
   },
   "schema": {
+    "connection_constraints": [
+      {
+        "edge_label": "ownsAccount",
+        "in_label": "Account",
+        "out_label": "Customer"
+      },
+      {
+        "edge_label": "issuedByBranch",
+        "in_label": "Branch",
+        "out_label": "Account"
+      },
+      {
+        "edge_label": "managedByEmployee",
+        "in_label": "Employee",
+        "out_label": "Account"
+      },
+      {
+        "edge_label": "belongsToProduct",
+        "in_label": "Product",
+        "out_label": "Account"
+      },
+      {
+        "edge_label": "worksAtBranch",
+        "in_label": "Branch",
+        "out_label": "Employee"
+      },
+      {
+        "edge_label": "hasCard",
+        "in_label": "Card",
+        "out_label": "Account"
+      },
+      {
+        "edge_label": "hasLoan",
+        "in_label": "Loan",
+        "out_label": "Customer"
+      },
+      {
+        "edge_label": "postedTransaction",
+        "in_label": "Transaction",
+        "out_label": "Account"
+      },
+      {
+        "edge_label": "beneficiaryForAccount",
+        "in_label": "Beneficiary",
+        "out_label": "Account"
+      },
+      {
+        "edge_label": "hasAlert",
+        "in_label": "Alert",
+        "out_label": "Account"
+      }
+    ],
     "edge_indexes": [
       {
+        "keys": [
+          {
+            "property_key": "edge_external_id"
+          }
+        ],
+        "kind": "composite",
         "name": "byEdgeExternalId",
         "property_key": "edge_external_id",
+        "property_keys": [
+          "edge_external_id"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "ownsAccount",
+        "keys": [
+          {
+            "property_key": "relationshipType"
+          }
+        ],
+        "kind": "composite",
+        "name": "ownsAccountByRelationshipType",
+        "property_key": "relationshipType",
+        "property_keys": [
+          "relationshipType"
+        ],
         "unique": false
       }
     ],
@@ -424,6 +583,153 @@
         "multiplicity": "ONE2MANY",
         "name": "hasAlert",
         "ontology_iri": "https://example.com/ontology/bank#hasAlert"
+      }
+    ],
+    "edge_property_constraints": [
+      {
+        "label": "ownsAccount",
+        "property_keys": [
+          "edge_external_id",
+          "ontology_iri",
+          "ontology_property_lineage",
+          "ontology_inverse_property_iris",
+          "source_table",
+          "load_batch_id",
+          "loaded_at",
+          "relationshipType"
+        ]
+      },
+      {
+        "label": "issuedByBranch",
+        "property_keys": [
+          "edge_external_id",
+          "ontology_iri",
+          "ontology_property_lineage",
+          "ontology_inverse_property_iris",
+          "source_table",
+          "load_batch_id",
+          "loaded_at"
+        ]
+      },
+      {
+        "label": "managedByEmployee",
+        "property_keys": [
+          "edge_external_id",
+          "ontology_iri",
+          "ontology_property_lineage",
+          "ontology_inverse_property_iris",
+          "source_table",
+          "load_batch_id",
+          "loaded_at"
+        ]
+      },
+      {
+        "label": "belongsToProduct",
+        "property_keys": [
+          "edge_external_id",
+          "ontology_iri",
+          "ontology_property_lineage",
+          "ontology_inverse_property_iris",
+          "source_table",
+          "load_batch_id",
+          "loaded_at"
+        ]
+      },
+      {
+        "label": "worksAtBranch",
+        "property_keys": [
+          "edge_external_id",
+          "ontology_iri",
+          "ontology_property_lineage",
+          "ontology_inverse_property_iris",
+          "source_table",
+          "load_batch_id",
+          "loaded_at"
+        ]
+      },
+      {
+        "label": "hasCard",
+        "property_keys": [
+          "edge_external_id",
+          "ontology_iri",
+          "ontology_property_lineage",
+          "ontology_inverse_property_iris",
+          "source_table",
+          "load_batch_id",
+          "loaded_at"
+        ]
+      },
+      {
+        "label": "hasLoan",
+        "property_keys": [
+          "edge_external_id",
+          "ontology_iri",
+          "ontology_property_lineage",
+          "ontology_inverse_property_iris",
+          "source_table",
+          "load_batch_id",
+          "loaded_at"
+        ]
+      },
+      {
+        "label": "postedTransaction",
+        "property_keys": [
+          "edge_external_id",
+          "ontology_iri",
+          "ontology_property_lineage",
+          "ontology_inverse_property_iris",
+          "source_table",
+          "load_batch_id",
+          "loaded_at",
+          "transactionDateEdge",
+          "debitCredit",
+          "channel"
+        ]
+      },
+      {
+        "label": "beneficiaryForAccount",
+        "property_keys": [
+          "edge_external_id",
+          "ontology_iri",
+          "ontology_property_lineage",
+          "ontology_inverse_property_iris",
+          "source_table",
+          "load_batch_id",
+          "loaded_at"
+        ]
+      },
+      {
+        "label": "hasAlert",
+        "property_keys": [
+          "edge_external_id",
+          "ontology_iri",
+          "ontology_property_lineage",
+          "ontology_inverse_property_iris",
+          "source_table",
+          "load_batch_id",
+          "loaded_at"
+        ]
+      }
+    ],
+    "edge_relation_indexes": [
+      {
+        "direction": "OUT",
+        "edge_label": "postedTransaction",
+        "name": "postedTransactionsByDebitAndDate",
+        "property_keys": [
+          "debitCredit",
+          "transactionDateEdge"
+        ],
+        "sort_order": "desc"
+      },
+      {
+        "direction": "OUT",
+        "edge_label": "ownsAccount",
+        "name": "ownsAccountByRelationshipTypeVc",
+        "property_keys": [
+          "relationshipType"
+        ],
+        "sort_order": "asc"
       }
     ],
     "property_keys": [
@@ -603,6 +909,21 @@
         "name": "currentBalance"
       },
       {
+        "cardinality": "LIST",
+        "data_type": "Decimal",
+        "name": "balanceSnapshot"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "Date",
+        "name": "balanceRecordedAt"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "String",
+        "name": "propertyOrigin"
+      },
+      {
         "cardinality": "SINGLE",
         "data_type": "String",
         "name": "currencyCode"
@@ -726,13 +1047,85 @@
         "cardinality": "SINGLE",
         "data_type": "String",
         "name": "relationshipType"
+      },
+      {
+        "cardinality": "SINGLE",
+        "data_type": "Date",
+        "name": "transactionDateEdge"
+      }
+    ],
+    "property_relation_indexes": [
+      {
+        "meta_property_keys": [
+          "balanceRecordedAt"
+        ],
+        "name": "balanceSnapshotByRecordedAt",
+        "property_key": "balanceSnapshot",
+        "sort_order": "desc"
       }
     ],
     "vertex_indexes": [
       {
+        "keys": [
+          {
+            "property_key": "external_id"
+          }
+        ],
+        "kind": "composite",
         "name": "byExternalId",
         "property_key": "external_id",
+        "property_keys": [
+          "external_id"
+        ],
         "unique": true
+      },
+      {
+        "index_only": "Customer",
+        "keys": [
+          {
+            "property_key": "email"
+          }
+        ],
+        "kind": "composite",
+        "name": "customerByEmail",
+        "property_key": "email",
+        "property_keys": [
+          "email"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Account",
+        "keys": [
+          {
+            "property_key": "accountNumber"
+          }
+        ],
+        "kind": "composite",
+        "name": "accountByAccountNumber",
+        "property_key": "accountNumber",
+        "property_keys": [
+          "accountNumber"
+        ],
+        "unique": true
+      },
+      {
+        "index_only": "Transaction",
+        "keys": [
+          {
+            "property_key": "transactionCode"
+          },
+          {
+            "property_key": "transactionDate"
+          }
+        ],
+        "kind": "composite",
+        "name": "transactionByCodeAndDate",
+        "property_keys": [
+          "transactionCode",
+          "transactionDate"
+        ],
+        "unique": false
       }
     ],
     "vertex_labels": [
@@ -776,8 +1169,480 @@
         "name": "Alert",
         "ontology_iri": "https://example.com/ontology/bank#Alert"
       }
+    ],
+    "vertex_property_constraints": [
+      {
+        "label": "Customer",
+        "property_keys": [
+          "external_id",
+          "ontology_iri",
+          "rdf_types",
+          "source_table",
+          "source_primary_key",
+          "load_batch_id",
+          "loaded_at",
+          "customerName",
+          "dateOfBirth",
+          "customerSegment",
+          "riskRating",
+          "kycStatus",
+          "email",
+          "city",
+          "state",
+          "country",
+          "postalCode",
+          "mobilePhone"
+        ]
+      },
+      {
+        "label": "Branch",
+        "property_keys": [
+          "external_id",
+          "ontology_iri",
+          "rdf_types",
+          "source_table",
+          "source_primary_key",
+          "load_batch_id",
+          "loaded_at",
+          "branchCode",
+          "branchName",
+          "city",
+          "state",
+          "region"
+        ]
+      },
+      {
+        "label": "Employee",
+        "property_keys": [
+          "external_id",
+          "ontology_iri",
+          "rdf_types",
+          "source_table",
+          "source_primary_key",
+          "load_batch_id",
+          "loaded_at",
+          "employeeName",
+          "role",
+          "region"
+        ]
+      },
+      {
+        "label": "Product",
+        "property_keys": [
+          "external_id",
+          "ontology_iri",
+          "rdf_types",
+          "source_table",
+          "source_primary_key",
+          "load_batch_id",
+          "loaded_at",
+          "productCode",
+          "productName",
+          "productType",
+          "interestRate"
+        ]
+      },
+      {
+        "label": "Account",
+        "property_keys": [
+          "external_id",
+          "ontology_iri",
+          "rdf_types",
+          "source_table",
+          "source_primary_key",
+          "load_batch_id",
+          "loaded_at",
+          "accountNumber",
+          "accountType",
+          "accountStatus",
+          "openDate",
+          "currentBalance",
+          "balanceSnapshot",
+          "currencyCode"
+        ]
+      },
+      {
+        "label": "Card",
+        "property_keys": [
+          "external_id",
+          "ontology_iri",
+          "rdf_types",
+          "source_table",
+          "source_primary_key",
+          "load_batch_id",
+          "loaded_at",
+          "cardNumberMasked",
+          "cardType",
+          "cardStatus",
+          "expiryDate"
+        ]
+      },
+      {
+        "label": "Loan",
+        "property_keys": [
+          "external_id",
+          "ontology_iri",
+          "rdf_types",
+          "source_table",
+          "source_primary_key",
+          "load_batch_id",
+          "loaded_at",
+          "loanNumber",
+          "loanType",
+          "principalAmount",
+          "outstandingAmount",
+          "loanStatus"
+        ]
+      },
+      {
+        "label": "Transaction",
+        "property_keys": [
+          "external_id",
+          "ontology_iri",
+          "rdf_types",
+          "source_table",
+          "source_primary_key",
+          "load_batch_id",
+          "loaded_at",
+          "transactionCode",
+          "transactionDate",
+          "transactionAmount",
+          "channel",
+          "transactionType",
+          "debitCredit"
+        ]
+      },
+      {
+        "label": "Beneficiary",
+        "property_keys": [
+          "external_id",
+          "ontology_iri",
+          "rdf_types",
+          "source_table",
+          "source_primary_key",
+          "load_batch_id",
+          "loaded_at",
+          "beneficiaryName",
+          "bankName",
+          "beneficiaryAccount"
+        ]
+      },
+      {
+        "label": "Alert",
+        "property_keys": [
+          "external_id",
+          "ontology_iri",
+          "rdf_types",
+          "source_table",
+          "source_primary_key",
+          "load_batch_id",
+          "loaded_at",
+          "alertCode",
+          "alertType",
+          "severity",
+          "alertStatus",
+          "raisedAt"
+        ]
+      }
     ]
   },
+  "schema_actions": {
+    "activated_graph_indexes": [],
+    "activated_relation_indexes": [],
+    "created_graph_indexes": [
+      "byExternalId",
+      "customerByEmail",
+      "accountByAccountNumber",
+      "transactionByCodeAndDate",
+      "byEdgeExternalId",
+      "ownsAccountByRelationshipType"
+    ],
+    "graph_indexes": [
+      {
+        "kind": "composite",
+        "name": "byExternalId",
+        "property_keys": [
+          "external_id"
+        ],
+        "statuses": {
+          "external_id": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Customer",
+        "kind": "composite",
+        "name": "customerByEmail",
+        "property_keys": [
+          "email"
+        ],
+        "statuses": {
+          "email": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Account",
+        "kind": "composite",
+        "name": "accountByAccountNumber",
+        "property_keys": [
+          "accountNumber"
+        ],
+        "statuses": {
+          "accountNumber": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Transaction",
+        "kind": "composite",
+        "name": "transactionByCodeAndDate",
+        "property_keys": [
+          "transactionCode",
+          "transactionDate"
+        ],
+        "statuses": {
+          "transactionCode": "ENABLED",
+          "transactionDate": "ENABLED"
+        }
+      },
+      {
+        "kind": "composite",
+        "name": "byEdgeExternalId",
+        "property_keys": [
+          "edge_external_id"
+        ],
+        "statuses": {
+          "edge_external_id": "ENABLED"
+        }
+      },
+      {
+        "index_only": "ownsAccount",
+        "kind": "composite",
+        "name": "ownsAccountByRelationshipType",
+        "property_keys": [
+          "relationshipType"
+        ],
+        "statuses": {
+          "relationshipType": "ENABLED"
+        }
+      }
+    ],
+    "index_activation_mode": "reindex",
+    "relation_index_activation_mode": "reindex",
+    "relation_indexes": [
+      {
+        "direction": "OUT",
+        "name": "postedTransactionsByDebitAndDate",
+        "property_keys": [
+          "debitCredit",
+          "transactionDateEdge"
+        ],
+        "relation_kind": "edge",
+        "relation_type": "postedTransaction",
+        "sort_order": "desc",
+        "status": "ENABLED"
+      },
+      {
+        "direction": "OUT",
+        "name": "ownsAccountByRelationshipTypeVc",
+        "property_keys": [
+          "relationshipType"
+        ],
+        "relation_kind": "edge",
+        "relation_type": "ownsAccount",
+        "sort_order": "asc",
+        "status": "ENABLED"
+      },
+      {
+        "direction": "OUT",
+        "name": "balanceSnapshotByRecordedAt",
+        "property_keys": [
+          "balanceRecordedAt"
+        ],
+        "relation_kind": "property",
+        "relation_type": "balanceSnapshot",
+        "sort_order": "desc",
+        "status": "ENABLED"
+      }
+    ],
+    "schema_constraints": {
+      "connection_constraints": [],
+      "edge_property_constraints": [],
+      "vertex_property_constraints": [
+        {
+          "label": "Customer",
+          "property_keys": [
+            "city",
+            "country",
+            "customerName",
+            "customerSegment",
+            "dateOfBirth",
+            "email",
+            "external_id",
+            "kycStatus",
+            "load_batch_id",
+            "loaded_at",
+            "mobilePhone",
+            "ontology_iri",
+            "postalCode",
+            "rdf_types",
+            "riskRating",
+            "source_primary_key",
+            "source_table",
+            "state"
+          ]
+        },
+        {
+          "label": "Branch",
+          "property_keys": [
+            "branchCode",
+            "branchName",
+            "city",
+            "external_id",
+            "load_batch_id",
+            "loaded_at",
+            "ontology_iri",
+            "rdf_types",
+            "region",
+            "source_primary_key",
+            "source_table",
+            "state"
+          ]
+        },
+        {
+          "label": "Employee",
+          "property_keys": [
+            "employeeName",
+            "external_id",
+            "load_batch_id",
+            "loaded_at",
+            "ontology_iri",
+            "rdf_types",
+            "region",
+            "role",
+            "source_primary_key",
+            "source_table"
+          ]
+        },
+        {
+          "label": "Product",
+          "property_keys": [
+            "external_id",
+            "interestRate",
+            "load_batch_id",
+            "loaded_at",
+            "ontology_iri",
+            "productCode",
+            "productName",
+            "productType",
+            "rdf_types",
+            "source_primary_key",
+            "source_table"
+          ]
+        },
+        {
+          "label": "Account",
+          "property_keys": [
+            "accountNumber",
+            "accountStatus",
+            "accountType",
+            "balanceSnapshot",
+            "currencyCode",
+            "currentBalance",
+            "external_id",
+            "load_batch_id",
+            "loaded_at",
+            "ontology_iri",
+            "openDate",
+            "rdf_types",
+            "source_primary_key",
+            "source_table"
+          ]
+        },
+        {
+          "label": "Card",
+          "property_keys": [
+            "cardNumberMasked",
+            "cardStatus",
+            "cardType",
+            "expiryDate",
+            "external_id",
+            "load_batch_id",
+            "loaded_at",
+            "ontology_iri",
+            "rdf_types",
+            "source_primary_key",
+            "source_table"
+          ]
+        },
+        {
+          "label": "Loan",
+          "property_keys": [
+            "external_id",
+            "load_batch_id",
+            "loaded_at",
+            "loanNumber",
+            "loanStatus",
+            "loanType",
+            "ontology_iri",
+            "outstandingAmount",
+            "principalAmount",
+            "rdf_types",
+            "source_primary_key",
+            "source_table"
+          ]
+        },
+        {
+          "label": "Transaction",
+          "property_keys": [
+            "channel",
+            "debitCredit",
+            "external_id",
+            "load_batch_id",
+            "loaded_at",
+            "ontology_iri",
+            "rdf_types",
+            "source_primary_key",
+            "source_table",
+            "transactionAmount",
+            "transactionCode",
+            "transactionDate",
+            "transactionType"
+          ]
+        },
+        {
+          "label": "Beneficiary",
+          "property_keys": [
+            "bankName",
+            "beneficiaryAccount",
+            "beneficiaryName",
+            "external_id",
+            "load_batch_id",
+            "loaded_at",
+            "ontology_iri",
+            "rdf_types",
+            "source_primary_key",
+            "source_table"
+          ]
+        },
+        {
+          "label": "Alert",
+          "property_keys": [
+            "alertCode",
+            "alertStatus",
+            "alertType",
+            "external_id",
+            "load_batch_id",
+            "loaded_at",
+            "ontology_iri",
+            "raisedAt",
+            "rdf_types",
+            "severity",
+            "source_primary_key",
+            "source_table"
+          ]
+        }
+      ]
+    }
+  },
   "source_type": "csv",
-  "started_at": "2026-03-10T13:59:36.225466Z"
+  "started_at": "2026-03-10T17:13:55.901969Z"
 }

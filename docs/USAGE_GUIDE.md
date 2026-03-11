@@ -774,13 +774,74 @@ The loader creates, if missing:
 - property keys,
 - vertex labels,
 - edge labels,
-- composite indexes.
+- graph indexes declared in the mapping file,
+- schema constraints declared implicitly by the mapped labels/properties/connections,
+- vertex-centric relation indexes declared in the mapping file.
 
 Important JanusGraph compatibility notes discovered during live testing:
 
 - edge composite indexes cannot be unique in JanusGraph,
 - `Date` is mapped through a JanusGraph-supported Java type,
 - logical `Decimal` values are materialized as `Double` for JanusGraph compatibility.
+
+### Graph index support now included
+
+The loader supports configurable **graph-global indexes** for both vertices and edges through the top-level `indexes:` section in the mapping file.
+
+Supported today:
+
+- composite vertex indexes
+- composite edge indexes
+- multi-property composite indexes
+- label-constrained indexes via `index_only`
+- mixed indexes for search/range workloads when the JanusGraph server is already configured with a mixed-index backend
+- advanced mixed-index key mapping parameters (`mapping`, analyzers, mapped field names, custom parameters)
+- edge relation indexes via `vertex_centric_indexes.edge_indexes`
+- property relation indexes via `vertex_centric_indexes.property_indexes`
+- query-pattern-driven index recommendations emitted in the load report
+
+If you declare a **unique composite index** on an eventually consistent storage backend, make sure the JanusGraph storage/locking configuration is aligned with that uniqueness requirement. The loader can define the index, but backend consistency still matters.
+
+New JanusGraph settings in the mapping file:
+
+- `janusgraph.index_activation_mode`
+  - `reindex` — safest default; if a new index is created, the loader reindexes it and waits for `ENABLED`
+  - `enable` — enables newly created indexes without reindexing old data
+  - `skip` — creates the index definition only and leaves activation to an operator
+- `janusgraph.index_reindex_concurrency`
+  - optional concurrency hint for management-system reindex jobs
+- `janusgraph.relation_index_activation_mode`
+  - same semantics as graph index activation, but for JanusGraph relation indexes
+- `janusgraph.relation_index_reindex_concurrency`
+  - optional concurrency hint for relation-index reindex jobs
+- `janusgraph.create_schema_constraints`
+  - applies `addProperties` / `addConnection` constraints for mapped labels and edges
+
+### Why this matters in production
+
+Without a JanusGraph index, Gremlin queries often degrade into full scans.
+
+That is especially painful for:
+
+- `g.V().has('<property>', value)` entry points,
+- `g.E().has('<property>', value)` edge lookups,
+- exact-match traversals over large label populations.
+
+The loader now creates the configured indexes **before or alongside the load**, and if a new index is introduced later on top of existing data, the default activation mode will reindex it so the old data becomes visible through the new index.
+
+### Vertex-centric and constraint support now included
+
+This implementation now creates both **graph-global indexes** and **vertex-centric JanusGraph relation indexes**.
+
+Use `vertex_centric_indexes.edge_indexes` when your hot path looks like this:
+
+- start from one vertex,
+- traverse thousands/millions of incident edges,
+- filter by edge property or order by an edge-local sort key.
+
+Use `vertex_centric_indexes.property_indexes` when you model repeated vertex-property values plus meta-properties and need to traverse those values efficiently by meta-property.
+
+The loader also applies JanusGraph schema constraints using `addProperties` / `addConnection` so the server can reject writes that violate the mapped label/property/connection model when `schema.constraints=true` is enabled server-side.
 
 ## 14.5 Metadata stored on graph elements
 
@@ -891,6 +952,8 @@ The report includes:
 - timestamps,
 - mode and source type,
 - schema plan,
+- query-pattern-driven index recommendations,
+- schema action summaries for graph indexes, relation indexes, and constraints,
 - per-class load statistics,
 - per-relationship load statistics.
 
@@ -918,6 +981,48 @@ bash scripts/start_janusgraph_test.sh
 ```
 
 If needed, inspect JanusGraph logs under the local installation.
+
+## 16.2.1 Queries are slow or full scans appear in production
+
+Check all of the following:
+
+- the queried property is covered by a configured graph index,
+- the index status is `ENABLED`,
+- if the index was added after data already existed, it was reindexed,
+- the JanusGraph server has `query.force-index=true` in production.
+
+JanusGraph guidance used for this loader design:
+
+- create indexes in the same schema phase as property keys and labels whenever possible,
+- wait for newly created indexes to register across the cluster,
+- use `REINDEX` when the graph already contains data for those keys,
+- only use mixed indexes when the workload actually needs text/range/geo predicates.
+
+If an index remains stuck before `REGISTERED` or `ENABLED`, check for stale/zombie JanusGraph instances in the cluster before retrying the activation flow.
+
+## 16.2.2 Current KG capability gaps beyond indexing
+
+From an enterprise ontology / knowledge graph perspective, the most important capabilities still missing from this application are:
+
+### Critical now
+
+- SHACL validation of loaded data
+- post-load semantic validation of graph data against ontology promises
+- entity resolution / deduplication beyond source-system IDs
+- richer provenance and data-quality metrics
+
+### Useful next
+
+- incremental / CDC-style loading instead of full reload patterns
+- temporal versioning and rollback-oriented graph snapshots
+
+### Future roadmap
+
+- full OWL 2 reasoning beyond the current practical subset
+- multi-ontology alignment and federation
+- knowledge-graph completion / link prediction
+
+So: index lifecycle support is now built into the loader, but it is only one part of the broader enterprise KG story.
 
 ## 16.3 Production server TLS / SSL issues
 

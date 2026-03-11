@@ -16,6 +16,32 @@ VALID_CARDINALITIES = {"SINGLE", "SET", "LIST"}
 VALID_MULTIPLICITIES = {"MULTI", "SIMPLE", "MANY2ONE", "ONE2MANY", "ONE2ONE"}
 VALID_MODES = {"test", "prod"}
 VALID_SOURCE_TYPES = {"csv", "teradata"}
+VALID_INDEX_KINDS = {"composite", "mixed"}
+VALID_INDEX_ELEMENTS = {"vertex", "edge"}
+VALID_INDEX_ACTIVATION_MODES = {"reindex", "enable", "skip"}
+VALID_INDEX_MAPPINGS = {"DEFAULT", "TEXT", "STRING", "TEXTSTRING", "PREFIX_TREE", "BKD"}
+VALID_RELATION_INDEX_DIRECTIONS = {"IN", "OUT", "BOTH"}
+VALID_SORT_ORDERS = {"asc", "desc"}
+VALID_QUERY_PATTERN_TYPES = {"graph", "traversal", "property_meta"}
+VALID_QUERY_OPERATORS = {
+    "eq",
+    "neq",
+    "gt",
+    "gte",
+    "lt",
+    "lte",
+    "inside",
+    "outside",
+    "range",
+    "textcontains",
+    "textcontainsprefix",
+    "textcontainsregex",
+    "textcontainsfuzzy",
+    "textcontainsphrase",
+    "textprefix",
+    "textregex",
+    "textfuzzy",
+}
 
 XSD_TO_JANUSGRAPH = {
     "http://www.w3.org/2001/XMLSchema#string": "String",

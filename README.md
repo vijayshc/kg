@@ -7,7 +7,11 @@ This workspace contains a production-style loader that:
 - validates the ontology-to-physical mapping,
 - reads source data from either CSV files or Teradata,
 - creates missing JanusGraph schema objects idempotently,
+- creates JanusGraph schema constraints (`addProperties` / `addConnection`) during schema setup,
+- creates configured JanusGraph graph-global and vertex-centric relation indexes during schema setup and activates/reindexes them when needed,
 - upserts vertices, properties, and edges into JanusGraph,
+- supports vertex-property meta-properties and property relation indexes for those meta-properties,
+- emits query-pattern-driven index recommendations in the load report,
 - supports secure JanusGraph deployments that use HBase + ZooKeeper with Kerberos and SSL.
 
 The main entry point remains `kg_loader.py`, which is now a thin wrapper around the modular `kg_loader/` package.
@@ -24,7 +28,7 @@ Given:
 the loader will:
 
 1. parse ontology classes, datatype properties, and object properties,
-2. create missing vertex labels, edge labels, property keys, and indexes in JanusGraph,
+2. create missing vertex labels, edge labels, property keys, schema constraints, and indexes in JanusGraph,
 3. load individuals for each mapped class,
 4. load datatype/attribute properties,
 5. load object-property relationships as edges,
@@ -40,6 +44,8 @@ There is one small-but-important architecture detail here:
 That is why this repo includes `config/janusgraph-hbase-secure.properties.template`.
 
 In other words, the Python loader handles ingestion; the JanusGraph server handles secure storage/backend integration. Clean separation, less chaos.
+
+For production deployments, set `query.force-index=true` on the JanusGraph server so accidental full scans fail fast instead of quietly becoming long-running incidents.
 
 ## Files
 
@@ -77,6 +83,7 @@ The mapping file supports:
   - business key column
   - optional `id_template`
   - attribute/property mappings
+  - optional vertex-property `meta_properties`
 - `relationships[]`
   - ontology object-property IRI
   - source class IRI
@@ -85,6 +92,15 @@ The mapping file supports:
   - source/target foreign key columns
   - optional `id_template`
   - edge property mappings
+- `indexes[]`
+  - graph-global composite or mixed indexes
+  - optional advanced mixed-index key tuning via `keys[]` (`mapping`, analyzers, mapped field names, custom parameters)
+- `vertex_centric_indexes.edge_indexes[]`
+  - JanusGraph edge relation indexes for hot high-degree traversals
+- `vertex_centric_indexes.property_indexes[]`
+  - JanusGraph property relation indexes for vertex-property meta-properties
+- `query_patterns[]`
+  - declarative hot-path descriptions used to recommend missing graph or relation indexes
 
 For external attribute tables, set `source_table` and `entity_key_column` on the property mapping.
 
@@ -182,6 +198,24 @@ A pure shell solution would turn into a sprawling pile of quoting problems and s
 
 Within each JanusGraph write batch, repeated vertex IDs or edge IDs are merged before submission so duplicate rows in the same batch do not create avoidable duplicates.
 
+### Index strategy
+
+The loader now supports configurable graph-global indexes through `indexes:` and JanusGraph vertex-centric relation indexes through `vertex_centric_indexes:`.
+
+- **Composite graph indexes** are best for exact-match entry points like `accountNumber`, `email`, or `edge_external_id`.
+- **Mixed graph indexes** are supported for text/range/geo workloads and advanced field mapping, but require a JanusGraph search backend such as Elasticsearch, Solr, or Lucene to be configured on the server.
+- **Edge relation indexes** are designed for traversals that start from a high-degree vertex and then filter/order on edge properties.
+- **Property relation indexes** are designed for traversing vertex properties by their meta-properties.
+- **Query-pattern recommendations** are emitted in the load report so observed hot paths can be turned into concrete graph or relation index specs.
+- When the loader creates new indexes against an existing graph, it can automatically **reindex** them so previously loaded data becomes queryable through those indexes.
+
+For a new graph, the recommended order is still delightfully boring:
+
+1. create schema,
+2. create indexes,
+3. load data,
+4. query happily.
+
 ### Important constraint for custom templates
 
 For relationship rows and external property rows, the loader must be able to reconstruct the source/target vertex external IDs from the data returned by the SQL query.
@@ -209,9 +243,10 @@ The included tests cover:
 - ontology reasoning and ontology-aware mapping validation,
 - CSV source projection and alias handling,
 - schema plan generation,
+- mixed-index key tuning, relation-index planning, schema constraints, and query-pattern recommendations,
 - query builder behavior,
 - template rendering,
-- live JanusGraph validation of subclass typing, domain/range compatibility, edge lineage metadata, and supported OWL restrictions.
+- live JanusGraph validation of graph-global indexes, relation indexes, schema-constraint enforcement, property meta-properties, subclass typing, domain/range compatibility, edge lineage metadata, and supported OWL restrictions.
 
 Run them with:
 

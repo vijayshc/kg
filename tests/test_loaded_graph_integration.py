@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import sys
 import unittest
@@ -148,6 +149,17 @@ class GraphClient:
             ".by(values('rdf_types').fold())"
             ".fold()",
             {"externalId": vertex_external_id, "edgeLabel": edge_label},
+        )
+        return list(result or [])
+
+    def fetch_vertex_property_meta(self, external_id: str, property_key: str) -> list[Dict[str, Any]]:
+        result = self.submit_one(
+            "g.V().has('external_id', externalId).properties(propertyKey)"
+            ".project('value','meta')"
+            ".by(value())"
+            ".by(properties().group().by(key()).by(value().fold()))"
+            ".fold()",
+            {"externalId": external_id, "propertyKey": property_key},
         )
         return list(result or [])
 
@@ -368,8 +380,10 @@ class LoadedGraphIntegrationTests(unittest.TestCase):
         cls.mapping_path = ROOT / "config" / "ontology_mapping.test.yaml"
         cls.config = kg_loader.LoaderConfig.from_file(str(cls.mapping_path))
         cls.ontology = kg_loader.load_ontology(cls.config.ontology)
+        cls.load_report = json.loads((ROOT / "load_report.test.json").read_text(encoding="utf-8"))
 
         cls.graph = GraphClient(cls.config.janusgraph.url, cls.config.janusgraph.traversal_source)
+        cls.admin = kg_loader.JanusGraphClient(cls.config.janusgraph)
         try:
             if cls.graph.ping() != "ok":
                 raise RuntimeError("Unexpected JanusGraph ping response")
@@ -386,6 +400,17 @@ class LoadedGraphIntegrationTests(unittest.TestCase):
         cls.expected_edge_counts = Counter(item.label for item in cls.expected_edges.values())
         cls.class_mappings_by_label = {item.resolved_vertex_label(): item for item in cls.config.classes}
         cls.relationship_mappings_by_label = {item.resolved_edge_label(): item for item in cls.config.relationships}
+        cls.expected_graph_index_names = ["byExternalId", "byEdgeExternalId", *[item.name for item in cls.config.indexes]]
+        cls.expected_relation_indexes = [
+            *[
+                {"name": item.name, "relation_type": item.edge_label, "relation_kind": "edge"}
+                for item in cls.config.edge_relation_indexes
+            ],
+            *[
+                {"name": item.name, "relation_type": item.property_key, "relation_kind": "property"}
+                for item in cls.config.property_relation_indexes
+            ],
+        ]
         cls.expected_vertex_ids_by_label = {
             label: sorted(item.external_id for item in cls.expected_vertices.values() if item.label == label)
             for label in cls.class_mappings_by_label
@@ -394,6 +419,7 @@ class LoadedGraphIntegrationTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls) -> None:
         cls.builder.close()
+        cls.admin.close()
         cls.graph.close()
 
     @classmethod
@@ -422,6 +448,83 @@ class LoadedGraphIntegrationTests(unittest.TestCase):
 
     def test_janusgraph_is_reachable(self) -> None:
         self.assertEqual(self.graph.ping(), "ok")
+
+    def test_expected_graph_indexes_exist_and_are_enabled(self) -> None:
+        actual_indexes = {
+            item["name"]: item for item in self.admin.list_graph_indexes(self.expected_graph_index_names)
+        }
+        self.assertEqual(set(actual_indexes), set(self.expected_graph_index_names))
+        for index_name, index_info in sorted(actual_indexes.items()):
+            with self.subTest(index_name=index_name):
+                self.assertTrue(index_info.get("property_keys"))
+                self.assertTrue(index_info.get("statuses"))
+                self.assertTrue(
+                    all(status == "ENABLED" for status in index_info["statuses"].values()),
+                    f"Index '{index_name}' is not fully enabled: {index_info['statuses']}",
+                )
+
+    def test_expected_relation_indexes_exist_and_are_enabled(self) -> None:
+        actual_indexes = {
+            item["name"]: item for item in self.admin.list_relation_indexes(self.expected_relation_indexes)
+        }
+        self.assertEqual(set(actual_indexes), {item["name"] for item in self.expected_relation_indexes})
+        for index_name, index_info in sorted(actual_indexes.items()):
+            with self.subTest(index_name=index_name):
+                self.assertTrue(index_info.get("property_keys"))
+                self.assertEqual(index_info.get("status"), "ENABLED")
+
+    def test_schema_constraints_are_materialized(self) -> None:
+        constraints = self.admin.list_schema_constraints(
+            list(self.class_mappings_by_label.keys()),
+            list(self.relationship_mappings_by_label.keys()),
+        )
+        customer_constraint = next(item for item in constraints["vertex_property_constraints"] if item["label"] == "Customer")
+        self.assertIn("email", customer_constraint["property_keys"])
+        account_constraint = next(item for item in constraints["vertex_property_constraints"] if item["label"] == "Account")
+        self.assertIn("balanceSnapshot", account_constraint["property_keys"])
+
+    def test_schema_constraints_reject_invalid_customer_property(self) -> None:
+        with self.assertRaises(Exception):
+            self.admin.submit(
+                "g.addV('Customer').property('external_id', badId).property('transactionAmount', 99.5d).iterate()",
+                bindings={"badId": "Customer:INVALID-CONSTRAINT-PROP"},
+            )
+
+    def test_schema_constraints_reject_invalid_connection(self) -> None:
+        with self.assertRaises(Exception):
+            self.admin.submit(
+                "g.addV('Customer').property('external_id', outId).as('c')"
+                ".addV('Branch').property('external_id', inId).as('b')"
+                ".addE('ownsAccount').from('c').to('b').iterate()",
+                bindings={
+                    "outId": "Customer:INVALID-CONNECTION-OUT",
+                    "inId": "Branch:INVALID-CONNECTION-IN",
+                },
+            )
+
+    def test_current_balance_meta_properties_are_loaded(self) -> None:
+        expected_meta = {
+            "Account:A100": {"balanceRecordedAt": "2021-05-12", "propertyOrigin": "account_dim.current_balance"},
+            "Account:A101": {"balanceRecordedAt": "2022-03-01", "propertyOrigin": "account_dim.current_balance"},
+            "Account:A102": {"balanceRecordedAt": "2020-11-19", "propertyOrigin": "account_dim.current_balance"},
+        }
+        for external_id, meta_expectation in expected_meta.items():
+            with self.subTest(external_id=external_id):
+                entries = self.graph.fetch_vertex_property_meta(external_id, "balanceSnapshot")
+                self.assertEqual(len(entries), 1)
+                meta_values = entries[0]["meta"]
+                actual_recorded_at = normalize_graph_scalar(meta_values["balanceRecordedAt"][0], "Date")
+                actual_origin = normalize_graph_scalar(meta_values["propertyOrigin"][0], "String")
+                self.assertEqual(actual_recorded_at, meta_expectation["balanceRecordedAt"])
+                self.assertEqual(actual_origin, meta_expectation["propertyOrigin"])
+
+    def test_query_pattern_recommendations_are_reported(self) -> None:
+        recommendations = {item["name"]: item for item in self.load_report["query_pattern_recommendations"]}
+        self.assertIn("Customer_Email_Lookup", recommendations)
+        self.assertIn("Customer_Name_Search", recommendations)
+        self.assertEqual(recommendations["Customer_Email_Lookup"]["status"], "satisfied")
+        self.assertEqual(recommendations["Customer_Name_Search"]["status"], "recommended")
+        self.assertEqual(recommendations["Customer_Name_Search"]["details"]["kind"], "mixed")
 
     def test_vertex_counts_match_input_data(self) -> None:
         for label, expected_count in sorted(self.expected_vertex_counts.items()):
@@ -484,8 +587,13 @@ class LoadedGraphIntegrationTests(unittest.TestCase):
                     with self.subTest(external_id=external_id, property_key=property_key):
                         self.assertIn(property_key, actual_properties, f"Missing property '{property_key}' on vertex '{external_id}'")
                         actual_value = normalize_graph_property(actual_properties[property_key], expected_property)
-                        if expected_property.data_type == "Decimal":
+                        if expected_property.data_type == "Decimal" and expected_property.cardinality == "SINGLE":
                             self.assertAlmostEqual(float(actual_value), float(expected_property.value), places=6)
+                        elif expected_property.data_type == "Decimal":
+                            self.assertEqual(
+                                [round(float(item), 6) for item in actual_value],
+                                [round(float(item), 6) for item in expected_property.value],
+                            )
                         else:
                             self.assertEqual(actual_value, expected_property.value)
 

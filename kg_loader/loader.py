@@ -7,6 +7,7 @@ from .config import ClassMapping, LoaderConfig, PropertyMapping, RelationshipMap
 from .data_clients import CsvClient, TabularDataClient, TeradataClient
 from .gremlin import JanusGraphClient
 from .ontology import OntologyCatalog, OntologyProperty, load_ontology, validate_mapping_against_ontology
+from .recommendations import recommend_query_pattern_indexes
 from .schema import SchemaPlanner
 from .utils import (
     chunked,
@@ -41,6 +42,11 @@ class KnowledgeGraphLoader:
         ontology = load_ontology(self.config.ontology)
         validate_mapping_against_ontology(self.config, ontology)
         schema_plan = SchemaPlanner(self.config, ontology).build()
+        recommendations = (
+            [item.to_dict() for item in recommend_query_pattern_indexes(self.config, schema_plan)]
+            if self.config.janusgraph.emit_query_pattern_recommendations
+            else []
+        )
 
         report: Dict[str, Any] = {
             "batch_id": batch_id,
@@ -49,6 +55,7 @@ class KnowledgeGraphLoader:
             "mode": self.config.ingestion.mode,
             "source_type": self.config.ingestion.source_type,
             "schema": schema_plan.to_dict(),
+            "query_pattern_recommendations": recommendations,
             "classes": {},
             "relationships": {},
         }
@@ -63,7 +70,7 @@ class KnowledgeGraphLoader:
             janusgraph = JanusGraphClient(self.config.janusgraph)
             try:
                 if self.config.janusgraph.create_schema:
-                    janusgraph.ensure_schema(schema_plan)
+                    report["schema_actions"] = janusgraph.ensure_schema(schema_plan)
 
                 for class_mapping in self.config.classes:
                     report["classes"][class_mapping.resolved_vertex_label()] = self.load_class(
@@ -355,9 +362,34 @@ class KnowledgeGraphLoader:
         data_type = normalize_data_type(
             prop.data_type or infer_data_type_from_ranges(ontology.properties.get(prop.iri, OntologyProperty(prop.iri, "unknown")).ranges)
         )
+        meta_properties = self.build_meta_properties(prop, row)
         return {
             "key": prop.resolved_property_key(),
             "value": coerce_value_for_transport(value, data_type),
             "data_type": data_type,
             "cardinality": prop.cardinality,
+            "meta_properties": meta_properties,
         }
+
+    def build_meta_properties(self, prop: PropertyMapping, row: Dict[str, Any]) -> List[Dict[str, Any]]:
+        meta_properties: List[Dict[str, Any]] = []
+        for meta_prop in prop.meta_properties:
+            if meta_prop.source_column:
+                if meta_prop.source_column not in row:
+                    raise KeyError(
+                        f"Meta property source column '{meta_prop.source_column}' is missing for '{prop.iri}'. "
+                        f"Available columns: {sorted(set(row.keys()))}"
+                    )
+                meta_value = row[meta_prop.source_column]
+            else:
+                meta_value = meta_prop.constant_value
+            if meta_value is None:
+                continue
+            meta_properties.append(
+                {
+                    "key": meta_prop.property_key,
+                    "value": coerce_value_for_transport(meta_value, meta_prop.data_type),
+                    "data_type": meta_prop.data_type,
+                }
+            )
+        return meta_properties

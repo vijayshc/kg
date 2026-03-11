@@ -8,7 +8,13 @@ janusgraph:
   traversal_source: ${JANUSGRAPH_TRAVERSAL_SOURCE:-g}
   graph_alias: ${JANUSGRAPH_GRAPH_ALIAS:-graph}
   create_schema: true
+  create_schema_constraints: true
   request_timeout_seconds: ${JANUSGRAPH_REQUEST_TIMEOUT_SECONDS:-300}
+  index_activation_mode: ${JANUSGRAPH_INDEX_ACTIVATION_MODE:-reindex}
+  index_reindex_concurrency: ${JANUSGRAPH_INDEX_REINDEX_CONCURRENCY:-0}
+  relation_index_activation_mode: ${JANUSGRAPH_RELATION_INDEX_ACTIVATION_MODE:-reindex}
+  relation_index_reindex_concurrency: ${JANUSGRAPH_RELATION_INDEX_REINDEX_CONCURRENCY:-0}
+  emit_query_pattern_recommendations: true
 
 runtime:
   batch_size: 100
@@ -22,6 +28,84 @@ ingestion:
   csv_root_dir: ../data/banking_csv
   csv_delimiter: ","
   csv_encoding: utf-8
+
+indexes:
+  - name: customerByEmail
+    element: vertex
+    kind: composite
+    property_keys: [email]
+    index_only: Customer
+  - name: accountByAccountNumber
+    element: vertex
+    kind: composite
+    property_keys: [accountNumber]
+    unique: true
+    index_only: Account
+  - name: transactionByCodeAndDate
+    element: vertex
+    kind: composite
+    property_keys: [transactionCode, transactionDate]
+    index_only: Transaction
+  - name: ownsAccountByRelationshipType
+    element: edge
+    kind: composite
+    property_keys: [relationshipType]
+    index_only: ownsAccount
+
+vertex_centric_indexes:
+  edge_indexes:
+    - name: postedTransactionsByDebitAndDate
+      edge_label: postedTransaction
+      direction: OUT
+      sort_order: desc
+      property_keys: [debitCredit, transactionDateEdge]
+    - name: ownsAccountByRelationshipTypeVc
+      edge_label: ownsAccount
+      direction: OUT
+      sort_order: asc
+      property_keys: [relationshipType]
+  property_indexes:
+    - name: balanceSnapshotByRecordedAt
+      property_key: balanceSnapshot
+      sort_order: desc
+      meta_property_keys: [balanceRecordedAt]
+
+query_patterns:
+  - name: Customer Email Lookup
+    type: graph
+    element: vertex
+    label: Customer
+    predicates:
+      - property_key: email
+        operator: eq
+  - name: Customer Name Search
+    type: graph
+    element: vertex
+    label: Customer
+    predicates:
+      - property_key: customerName
+        operator: textContains
+  - name: Recent Debit Transactions By Account
+    type: traversal
+    start_label: Account
+    edge_label: postedTransaction
+    direction: OUT
+    predicates:
+      - property_key: debitCredit
+        operator: eq
+      - property_key: transactionDateEdge
+        operator: range
+    order_by: transactionDateEdge
+    order: desc
+    limit: 10
+  - name: Current Balance By Recorded At
+    type: property_meta
+    property_key: balanceSnapshot
+    predicates:
+      - property_key: balanceRecordedAt
+        operator: range
+    order_by: balanceRecordedAt
+    order: desc
 
 classes:
   - iri: https://example.com/ontology/bank#Customer
@@ -190,6 +274,18 @@ classes:
         property_key: currentBalance
         source_column: current_balance
         data_type: Decimal
+      - iri: https://example.com/ontology/bank#currentBalance
+        property_key: balanceSnapshot
+        source_column: current_balance
+        data_type: Decimal
+        cardinality: LIST
+        meta_properties:
+          - property_key: balanceRecordedAt
+            source_column: open_date
+            data_type: Date
+          - property_key: propertyOrigin
+            constant_value: account_dim.current_balance
+            data_type: String
       - iri: https://example.com/ontology/bank#currencyCode
         property_key: currencyCode
         source_column: currency_code
@@ -433,6 +529,19 @@ relationships:
       from_column: account_id
       to_column: transaction_id
       fetch_size: 100
+    properties:
+      - iri: https://example.com/ontology/bank#transactionDate
+        property_key: transactionDateEdge
+        source_column: transaction_date
+        data_type: Date
+      - iri: https://example.com/ontology/bank#debitCredit
+        property_key: debitCredit
+        source_column: debit_credit
+        data_type: String
+      - iri: https://example.com/ontology/bank#channel
+        property_key: channel
+        source_column: channel
+        data_type: String
 
   - iri: https://example.com/ontology/bank#beneficiaryForAccount
     edge_label: beneficiaryForAccount

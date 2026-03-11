@@ -11,6 +11,11 @@ storage.hbase.table=enterprise_kg
 storage.batch-loading=true
 ids.block-size=100000
 schema.default=none
+schema.constraints=true
+query.force-index=true
+
+# Optional but often helpful guardrails / tuning for production traversals
+# query.smart-limit=true
 
 # HBase / ZooKeeper secure ensemble
 storage.hbase.ext.hbase.zookeeper.quorum=zk1.example.com,zk2.example.com,zk3.example.com
@@ -41,3 +46,9 @@ storage.hbase.ext.zookeeper.ssl.trustStore.password=REPLACE_WITH_REAL_TRUSTSTORE
 storage.hbase.ext.hbase.client.retries.number=6
 storage.hbase.ext.hbase.rpc.timeout=90000
 storage.hbase.ext.hbase.client.operation.timeout=90000
+
+# Optional mixed-index backend examples for text/range/geo workloads.
+# These are only needed if your mapping file declares `kind: mixed` indexes.
+# index.search.backend=elasticsearch
+# index.search.hostname=es1.example.com,es2.example.com,es3.example.com
+# index.search.map-name=true

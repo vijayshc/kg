@@ -40,6 +40,16 @@ def deduplicate_payload_rows(rows: List[Dict[str, Any]], identity_key: str) -> L
     return [merged[item] for item in order]
 
 
+def property_projection_columns(prop: PropertyMapping) -> List[str]:
+    columns: List[str] = []
+    if prop.source_column:
+        columns.append(prop.source_column)
+    for meta_prop in prop.meta_properties:
+        if meta_prop.source_column:
+            columns.append(meta_prop.source_column)
+    return unique_preserve_order(columns)
+
+
 def build_class_sql(class_mapping: ClassMapping, inline_properties: Sequence[PropertyMapping]) -> str:
     if class_mapping.source.sql:
         return class_mapping.source.sql
@@ -48,7 +58,8 @@ def build_class_sql(class_mapping: ClassMapping, inline_properties: Sequence[Pro
         raise ValueError(f"Class '{class_mapping.iri}' needs source.table and source.key_column for generated SQL")
 
     columns = [class_mapping.source.key_column]
-    columns.extend(prop.source_column for prop in inline_properties if prop.source_column)
+    for prop in inline_properties:
+        columns.extend(property_projection_columns(prop))
     return build_select_sql(class_mapping.source.table, columns, class_mapping.source.where)
 
 
@@ -65,7 +76,7 @@ def build_property_sql(class_mapping: ClassMapping, prop: PropertyMapping) -> st
     entity_projection = entity_key_column
     if entity_key_column != class_key:
         entity_projection = f"{entity_key_column} AS {class_key}"
-    columns = [entity_projection, prop.source_column]
+    columns = [entity_projection, *property_projection_columns(prop)]
     return build_select_sql(source_table, columns, prop.where)
 
 
@@ -313,7 +324,8 @@ class CsvClient(TabularDataClient):
 
     def describe_class_source(self, class_mapping: ClassMapping, inline_properties: Sequence[PropertyMapping]) -> Dict[str, Any]:
         projections = [class_mapping.source.key_column]
-        projections.extend(prop.source_column for prop in inline_properties if prop.source_column)
+        for prop in inline_properties:
+            projections.extend(property_projection_columns(prop))
         return {"type": "csv", "table": class_mapping.source.table, "columns": unique_preserve_order(projections)}
 
     def iter_class_batches(
@@ -325,14 +337,18 @@ class CsvClient(TabularDataClient):
         if not class_mapping.source.table or not class_mapping.source.key_column:
             raise ValueError(f"Class '{class_mapping.iri}' requires source.table and source.key_column for CSV mode")
         projections = [(class_mapping.source.key_column, class_mapping.source.key_column)]
-        projections.extend((prop.source_column, prop.source_column) for prop in inline_properties if prop.source_column)
+        for prop in inline_properties:
+            projections.extend((column, column) for column in property_projection_columns(prop))
         yield from self._iter_projected_batches(class_mapping.source.table, projections, fetch_size)
 
     def describe_property_source(self, class_mapping: ClassMapping, prop: PropertyMapping) -> Dict[str, Any]:
         return {
             "type": "csv",
             "table": prop.source_table or class_mapping.source.table,
-            "columns": [prop.entity_key_column or class_mapping.source.key_column, prop.source_column],
+            "columns": [
+                prop.entity_key_column or class_mapping.source.key_column,
+                *property_projection_columns(prop),
+            ],
         }
 
     def iter_property_batches(
@@ -349,8 +365,8 @@ class CsvClient(TabularDataClient):
 
         projections = [
             (entity_key_column, class_key),
-            (prop.source_column, prop.source_column),
         ]
+        projections.extend((column, column) for column in property_projection_columns(prop))
         yield from self._iter_projected_batches(source_table, projections, fetch_size)
 
     def describe_relationship_source(

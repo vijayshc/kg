@@ -23,6 +23,15 @@ class LoaderConfigTests(unittest.TestCase):
                 "ontology": {"file": "./enterprise.owl"},
                 "janusgraph": {"url": "${JANUSGRAPH_URL}"},
                 "runtime": {"batch_size": 100},
+                "indexes": [
+                    {
+                        "name": "customerByName",
+                        "element": "vertex",
+                        "kind": "composite",
+                        "property_keys": ["customerName"],
+                        "index_only": "Customer",
+                    }
+                ],
                 "classes": [
                     {
                         "iri": "https://example.com/Customer",
@@ -31,6 +40,13 @@ class LoaderConfigTests(unittest.TestCase):
                             {
                                 "iri": "https://example.com/customerName",
                                 "source_column": "customer_name",
+                                "meta_properties": [
+                                    {
+                                        "property_key": "propertyOrigin",
+                                        "constant_value": "customer_dim.customer_name",
+                                        "data_type": "String",
+                                    }
+                                ],
                             }
                         ],
                     }
@@ -47,6 +63,10 @@ class LoaderConfigTests(unittest.TestCase):
             self.assertEqual(config.ontology.file, str(ontology_path.resolve()))
             self.assertEqual(config.classes[0].resolved_vertex_label(), "Customer")
             self.assertEqual(config.ingestion.source_type, "teradata")
+            self.assertEqual(len(config.indexes), 1)
+            self.assertEqual(config.indexes[0].name, "customerByName")
+            self.assertEqual(config.indexes[0].property_keys, ["customerName"])
+            self.assertEqual(config.classes[0].properties[0].meta_properties[0].property_key, "propertyOrigin")
 
     def test_validation_rejects_external_property_template_missing_columns(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -114,6 +134,94 @@ class LoaderConfigTests(unittest.TestCase):
 
             self.assertIn("ws:// or wss://", str(ctx.exception))
 
+    def test_validation_rejects_invalid_custom_index(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            ontology_path = tmp_path / "enterprise.owl"
+            ontology_path.write_text("<rdf:RDF></rdf:RDF>", encoding="utf-8")
+
+            mapping = {
+                "ontology": {"file": "./enterprise.owl"},
+                "janusgraph": {"url": "ws://localhost:8182/gremlin"},
+                "indexes": [
+                    {
+                        "name": "badMixedIndex",
+                        "element": "vertex",
+                        "kind": "mixed",
+                        "unique": True,
+                        "property_keys": ["customerName"],
+                    }
+                ],
+                "classes": [
+                    {
+                        "iri": "https://example.com/Customer",
+                        "source": {"table": "EDW.customer_dim", "key_column": "customer_id"},
+                        "properties": [
+                            {
+                                "iri": "https://example.com/customerName",
+                                "source_column": "customer_name",
+                            }
+                        ],
+                    }
+                ],
+                "relationships": [],
+            }
+            mapping_path = tmp_path / "mapping.json"
+            mapping_path.write_text(json.dumps(mapping), encoding="utf-8")
+
+            with self.assertRaises(ValueError) as ctx:
+                kg_loader.LoaderConfig.from_file(str(mapping_path))
+
+            self.assertIn("Mixed index", str(ctx.exception))
+
+    def test_validation_rejects_relationship_property_meta_properties(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            ontology_path = tmp_path / "enterprise.owl"
+            ontology_path.write_text("<rdf:RDF></rdf:RDF>", encoding="utf-8")
+
+            mapping = {
+                "ontology": {"file": "./enterprise.owl"},
+                "janusgraph": {"url": "ws://localhost:8182/gremlin"},
+                "classes": [
+                    {
+                        "iri": "https://example.com/Customer",
+                        "source": {"table": "customer_dim", "key_column": "customer_id"},
+                    },
+                    {
+                        "iri": "https://example.com/Account",
+                        "source": {"table": "account_dim", "key_column": "account_id"},
+                    },
+                ],
+                "relationships": [
+                    {
+                        "iri": "https://example.com/ownsAccount",
+                        "source_class_iri": "https://example.com/Customer",
+                        "target_class_iri": "https://example.com/Account",
+                        "source": {"table": "bridge", "from_column": "customer_id", "to_column": "account_id"},
+                        "properties": [
+                            {
+                                "iri": "https://example.com/relationshipType",
+                                "source_column": "relationship_type",
+                                "meta_properties": [
+                                    {
+                                        "property_key": "badMeta",
+                                        "constant_value": "oops",
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                ],
+            }
+            mapping_path = tmp_path / "mapping.json"
+            mapping_path.write_text(json.dumps(mapping), encoding="utf-8")
+
+            with self.assertRaises(ValueError) as ctx:
+                kg_loader.LoaderConfig.from_file(str(mapping_path))
+
+            self.assertIn("cannot define meta_properties", str(ctx.exception))
+
 
 class QueryBuilderTests(unittest.TestCase):
     def test_build_relationship_sql_aliases_foreign_keys(self) -> None:
@@ -176,9 +284,69 @@ class SchemaPlannerTests(unittest.TestCase):
                                 source_column="customer_name",
                             )
                         ],
+                    ),
+                    kg_loader.ClassMapping(
+                        iri="https://example.com/Account",
+                        source=kg_loader.SourceSpec(table="EDW.account_dim", key_column="account_id"),
+                        properties=[
+                            kg_loader.PropertyMapping(
+                                iri="https://example.com/currentBalance",
+                                property_key="balanceSnapshot",
+                                source_column="current_balance",
+                                data_type="Decimal",
+                                cardinality="LIST",
+                                meta_properties=[
+                                    kg_loader.MetaPropertyMapping(
+                                        property_key="balanceRecordedAt",
+                                        source_column="open_date",
+                                        data_type="Date",
+                                    )
+                                ],
+                            )
+                        ],
                     )
                 ],
-                relationships=[],
+                indexes=[
+                    kg_loader.GraphIndexDefinition(
+                        name="customerByNameAndOntology",
+                        element="vertex",
+                        kind="composite",
+                        property_keys=["customerName", "ontology_iri"],
+                        index_only="Customer",
+                    )
+                ],
+                edge_relation_indexes=[
+                    kg_loader.EdgeRelationIndexDefinition(
+                        name="ownsAccountByRelationshipTypeVc",
+                        edge_label="ownsAccount",
+                        direction="OUT",
+                        sort_order="asc",
+                        property_keys=["relationshipType"],
+                    )
+                ],
+                property_relation_indexes=[
+                    kg_loader.PropertyRelationIndexDefinition(
+                        name="balanceSnapshotByRecordedAt",
+                        property_key="balanceSnapshot",
+                        sort_order="desc",
+                        meta_property_keys=["balanceRecordedAt"],
+                    )
+                ],
+                relationships=[
+                    kg_loader.RelationshipMapping(
+                        iri="https://example.com/ownsAccount",
+                        source_class_iri="https://example.com/Customer",
+                        target_class_iri="https://example.com/Account",
+                        source=kg_loader.SourceSpec(table="bridge", from_column="customer_id", to_column="account_id"),
+                        properties=[
+                            kg_loader.PropertyMapping(
+                                iri="https://example.com/relationshipType",
+                                source_column="relationship_type",
+                                data_type="String",
+                            )
+                        ],
+                    )
+                ],
                 mapping_file="memory",
             )
 
@@ -197,6 +365,16 @@ class SchemaPlannerTests(unittest.TestCase):
                         iri="https://example.com/ownsAccount",
                         kind="object",
                     ),
+                    "https://example.com/currentBalance": kg_loader.OntologyProperty(
+                        iri="https://example.com/currentBalance",
+                        kind="datatype",
+                        ranges={"http://www.w3.org/2001/XMLSchema#decimal"},
+                    ),
+                    "https://example.com/relationshipType": kg_loader.OntologyProperty(
+                        iri="https://example.com/relationshipType",
+                        kind="datatype",
+                        ranges={"http://www.w3.org/2001/XMLSchema#string"},
+                    ),
                 },
             )
 
@@ -205,9 +383,178 @@ class SchemaPlannerTests(unittest.TestCase):
             self.assertIn("byExternalId", plan.vertex_indexes)
             self.assertIn("byEdgeExternalId", plan.edge_indexes)
             self.assertFalse(plan.edge_indexes["byEdgeExternalId"].unique)
+            self.assertEqual(
+                plan.vertex_indexes["customerByNameAndOntology"].property_keys,
+                ("customerName", "ontology_iri"),
+            )
+            self.assertEqual(plan.vertex_indexes["customerByNameAndOntology"].index_only, "Customer")
+            self.assertIn("balanceRecordedAt", plan.property_keys)
             self.assertIn("Customer", plan.vertex_labels)
             self.assertIn("Account", plan.vertex_labels)
             self.assertIn("ownsAccount", plan.edge_labels)
+            self.assertIn("Customer", plan.vertex_property_constraints)
+            self.assertIn("ownsAccount", plan.edge_property_constraints)
+            self.assertIn("ownsAccount:Customer:Account", plan.connection_constraints)
+            self.assertIn("balanceSnapshotByRecordedAt", plan.property_relation_indexes)
+            self.assertEqual(
+                plan.property_relation_indexes["balanceSnapshotByRecordedAt"].meta_property_keys,
+                ("balanceRecordedAt",),
+            )
+            self.assertIn("ownsAccountByRelationshipTypeVc", plan.edge_relation_indexes)
+
+
+class RecommendationTests(unittest.TestCase):
+    def test_query_pattern_recommendations_mark_existing_and_missing_indexes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            ontology_path = tmp_path / "enterprise.owl"
+            ontology_path.write_text("<rdf:RDF></rdf:RDF>", encoding="utf-8")
+
+            config = kg_loader.LoaderConfig(
+                ontology=kg_loader.OntologyDefinition(file=str(ontology_path), include_unmapped_terms=False),
+                janusgraph=kg_loader.JanusGraphSettings(url="ws://localhost:8182/gremlin"),
+                runtime=kg_loader.RuntimeSettings(),
+                ingestion=kg_loader.IngestionSettings(mode="test", source_type="csv", csv_root_dir=str(tmp_path)),
+                classes=[
+                    kg_loader.ClassMapping(
+                        iri="https://example.com/Customer",
+                        source=kg_loader.SourceSpec(table="customer_dim", key_column="customer_id"),
+                        properties=[
+                            kg_loader.PropertyMapping(
+                                iri="https://example.com/customerName",
+                                source_column="customer_name",
+                                data_type="String",
+                            ),
+                            kg_loader.PropertyMapping(
+                                iri="https://example.com/email",
+                                source_column="email",
+                                data_type="String",
+                            ),
+                        ],
+                    ),
+                    kg_loader.ClassMapping(
+                        iri="https://example.com/Account",
+                        source=kg_loader.SourceSpec(table="account_dim", key_column="account_id"),
+                        properties=[
+                            kg_loader.PropertyMapping(
+                                iri="https://example.com/currentBalance",
+                                property_key="balanceSnapshot",
+                                source_column="current_balance",
+                                data_type="Decimal",
+                                cardinality="LIST",
+                                meta_properties=[
+                                    kg_loader.MetaPropertyMapping(
+                                        property_key="balanceRecordedAt",
+                                        source_column="open_date",
+                                        data_type="Date",
+                                    )
+                                ],
+                            )
+                        ],
+                    ),
+                    kg_loader.ClassMapping(
+                        iri="https://example.com/Transaction",
+                        source=kg_loader.SourceSpec(table="txn", key_column="transaction_id"),
+                    ),
+                ],
+                relationships=[
+                    kg_loader.RelationshipMapping(
+                        iri="https://example.com/postedTransaction",
+                        source_class_iri="https://example.com/Account",
+                        target_class_iri="https://example.com/Transaction",
+                        edge_label="postedTransaction",
+                        source=kg_loader.SourceSpec(table="txn", from_column="account_id", to_column="transaction_id"),
+                        properties=[
+                            kg_loader.PropertyMapping(
+                                iri="https://example.com/debitCredit",
+                                source_column="debit_credit",
+                                data_type="String",
+                            ),
+                            kg_loader.PropertyMapping(
+                                iri="https://example.com/transactionDate",
+                                property_key="transactionDateEdge",
+                                source_column="transaction_date",
+                                data_type="Date",
+                            ),
+                        ],
+                    )
+                ],
+                indexes=[
+                    kg_loader.GraphIndexDefinition(
+                        name="customerByEmail",
+                        element="vertex",
+                        property_keys=["email"],
+                        kind="composite",
+                        index_only="Customer",
+                    )
+                ],
+                edge_relation_indexes=[
+                    kg_loader.EdgeRelationIndexDefinition(
+                        name="postedTransactionsByDebitAndDate",
+                        edge_label="postedTransaction",
+                        direction="OUT",
+                        sort_order="desc",
+                        property_keys=["debitCredit", "transactionDateEdge"],
+                    )
+                ],
+                property_relation_indexes=[
+                    kg_loader.PropertyRelationIndexDefinition(
+                        name="balanceSnapshotByRecordedAt",
+                        property_key="balanceSnapshot",
+                        sort_order="desc",
+                        meta_property_keys=["balanceRecordedAt"],
+                    )
+                ],
+                query_patterns=[
+                    kg_loader.QueryPatternDefinition(
+                        name="Customer Email Lookup",
+                        pattern_type="graph",
+                        element="vertex",
+                        label="Customer",
+                        predicates=[kg_loader.QueryPredicateDefinition(property_key="email", operator="eq")],
+                    ),
+                    kg_loader.QueryPatternDefinition(
+                        name="Customer Name Search",
+                        pattern_type="graph",
+                        element="vertex",
+                        label="Customer",
+                        predicates=[kg_loader.QueryPredicateDefinition(property_key="customerName", operator="textcontains")],
+                    ),
+                    kg_loader.QueryPatternDefinition(
+                        name="Recent Debit Transactions By Account",
+                        pattern_type="traversal",
+                        start_label="Account",
+                        edge_label="postedTransaction",
+                        direction="OUT",
+                        predicates=[
+                            kg_loader.QueryPredicateDefinition(property_key="debitCredit", operator="eq"),
+                            kg_loader.QueryPredicateDefinition(property_key="transactionDateEdge", operator="range"),
+                        ],
+                        order_by="transactionDateEdge",
+                        order="desc",
+                    ),
+                    kg_loader.QueryPatternDefinition(
+                        name="Current Balance By Recorded At",
+                        pattern_type="property_meta",
+                        property_key="balanceSnapshot",
+                        predicates=[kg_loader.QueryPredicateDefinition(property_key="balanceRecordedAt", operator="range")],
+                        order_by="balanceRecordedAt",
+                        order="desc",
+                    ),
+                ],
+                mapping_file="memory",
+            )
+
+            ontology = kg_loader.OntologyCatalog(classes={}, properties={})
+            schema_plan = kg_loader.SchemaPlanner(config, ontology).build()
+            recommendations = kg_loader.recommend_query_pattern_indexes(config, schema_plan)
+            by_name = {item.name: item for item in recommendations}
+
+            self.assertEqual(by_name["Customer_Email_Lookup"].status, "satisfied")
+            self.assertEqual(by_name["Recent_Debit_Transactions_By_Account"].status, "satisfied")
+            self.assertEqual(by_name["Current_Balance_By_Recorded_At"].status, "satisfied")
+            self.assertEqual(by_name["Customer_Name_Search"].status, "recommended")
+            self.assertEqual(by_name["Customer_Name_Search"].details["kind"], "mixed")
 
 
 class ScriptUtilityTests(unittest.TestCase):
@@ -216,6 +563,12 @@ class ScriptUtilityTests(unittest.TestCase):
         self.assertIn("mgmt = secureGraph.openManagement()", script)
         self.assertIn("java.util.Date.class", script)
         self.assertIn("case 'DECIMAL': return Double.class", script)
+        self.assertIn("buildMixedIndex", script)
+        self.assertIn("createdGraphIndexes", script)
+        self.assertIn("buildEdgeIndex", script)
+        self.assertIn("buildPropertyIndex", script)
+        self.assertIn("addConnection", script)
+        self.assertIn("ParameterType", script)
 
 
 class CsvClientTests(unittest.TestCase):

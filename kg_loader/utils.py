@@ -13,7 +13,11 @@ from typing import Any, Dict, Iterable, Iterator, List, Optional, Sequence, Tupl
 from .constants import (
     VALID_CARDINALITIES,
     VALID_DATA_TYPES,
+    VALID_INDEX_MAPPINGS,
     VALID_MULTIPLICITIES,
+    VALID_QUERY_OPERATORS,
+    VALID_RELATION_INDEX_DIRECTIONS,
+    VALID_SORT_ORDERS,
     XSD_TO_JANUSGRAPH,
 )
 
@@ -172,6 +176,44 @@ def normalize_multiplicity(value: Optional[str]) -> str:
     return candidate
 
 
+def normalize_index_mapping(value: Optional[str]) -> Optional[str]:
+    if value is None or str(value).strip() == "":
+        return None
+    candidate = str(value).strip().upper()
+    if candidate not in VALID_INDEX_MAPPINGS:
+        raise ValueError(f"Unsupported index mapping '{value}'. Supported: {sorted(VALID_INDEX_MAPPINGS)}")
+    return candidate
+
+
+def normalize_relation_direction(value: Optional[str]) -> str:
+    if not value:
+        return "BOTH"
+    candidate = str(value).strip().upper()
+    if candidate not in VALID_RELATION_INDEX_DIRECTIONS:
+        raise ValueError(
+            f"Unsupported relation index direction '{value}'. Supported: {sorted(VALID_RELATION_INDEX_DIRECTIONS)}"
+        )
+    return candidate
+
+
+def normalize_sort_order(value: Optional[str]) -> str:
+    if not value:
+        return "asc"
+    candidate = str(value).strip().lower()
+    if candidate not in VALID_SORT_ORDERS:
+        raise ValueError(f"Unsupported sort order '{value}'. Supported: {sorted(VALID_SORT_ORDERS)}")
+    return candidate
+
+
+def normalize_query_operator(value: Optional[str]) -> str:
+    if not value:
+        return "eq"
+    candidate = str(value).strip().lower()
+    if candidate not in VALID_QUERY_OPERATORS:
+        raise ValueError(f"Unsupported query operator '{value}'. Supported: {sorted(VALID_QUERY_OPERATORS)}")
+    return candidate
+
+
 def to_iso_instant(value: datetime) -> str:
     if value.tzinfo is None:
         value = value.replace(tzinfo=timezone.utc)
@@ -189,7 +231,10 @@ def coerce_value_for_transport(value: Any, data_type: str) -> Any:
                 return value.date().isoformat()
             if isinstance(value, date):
                 return value.isoformat()
-            return date.fromisoformat(str(value)).isoformat()
+            value_str = str(value).strip()
+            if "T" in value_str:
+                return datetime.fromisoformat(value_str.replace("Z", "+00:00")).date().isoformat()
+            return date.fromisoformat(value_str).isoformat()
 
         if normalized_type == "Instant":
             if isinstance(value, datetime):
