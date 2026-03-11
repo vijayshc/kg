@@ -5,7 +5,13 @@ from typing import Any, Dict, Iterable, List, Optional
 
 from .config import LoaderConfig, QueryPatternDefinition
 from .schema import SchemaPlan
-from .utils import safe_name
+from .utils import (
+    default_relation_index_sort_order,
+    normalize_cardinality,
+    safe_name,
+    supports_auto_graph_index,
+    supports_relation_index_data_type,
+)
 
 TEXT_OPERATORS = {
     "textcontains",
@@ -44,6 +50,9 @@ class IndexRecommendation:
 
 
 def recommend_query_pattern_indexes(config: LoaderConfig, schema_plan: SchemaPlan) -> List[IndexRecommendation]:
+    if not config.query_patterns:
+        return _derive_default_recommendations(config, schema_plan)
+
     recommendations: List[IndexRecommendation] = []
     for pattern in config.query_patterns:
         if pattern.pattern_type == "graph":
@@ -100,6 +109,114 @@ def _recommend_graph_index(pattern: QueryPatternDefinition, schema_plan: SchemaP
         details=details,
         covered_by=covered_by,
     )
+
+
+def _derive_default_recommendations(config: LoaderConfig, schema_plan: SchemaPlan) -> List[IndexRecommendation]:
+    recommendations: List[IndexRecommendation] = []
+
+    for class_mapping in config.classes:
+        label = class_mapping.resolved_vertex_label()
+        for prop in class_mapping.properties:
+            property_key = prop.resolved_property_key()
+            if supports_auto_graph_index(prop.cardinality):
+                details: Dict[str, Any] = {
+                    "pattern_type": "graph",
+                    "element": "vertex",
+                    "label": label,
+                    "kind": "composite",
+                    "property_keys": [property_key],
+                    "keys": [{"property_key": property_key}],
+                    "index_only": label,
+                }
+                covered_by = _match_graph_index(details, schema_plan)
+                recommendations.append(
+                    IndexRecommendation(
+                        name=safe_name(f"{label} {property_key} Exact Lookup"),
+                        category="graph_index",
+                        status="satisfied" if covered_by else "recommended",
+                        rationale="Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+                        details=details,
+                        covered_by=covered_by,
+                    )
+                )
+
+            if normalize_cardinality(prop.cardinality) != "SINGLE":
+                for meta_prop in prop.meta_properties:
+                    if not supports_relation_index_data_type(meta_prop.data_type):
+                        continue
+                    details = {
+                        "pattern_type": "property_meta",
+                        "property_key": property_key,
+                        "sort_order": default_relation_index_sort_order(meta_prop.data_type),
+                        "meta_property_keys": [meta_prop.property_key],
+                    }
+                    covered_by = _match_property_relation_index(details, schema_plan)
+                    recommendations.append(
+                        IndexRecommendation(
+                            name=safe_name(f"{property_key} {meta_prop.property_key} Meta Traversal"),
+                            category="property_relation_index",
+                            status="satisfied" if covered_by else "recommended",
+                            rationale="Repeated vertex-property values with meta-properties benefit from property relation indexes.",
+                            details=details,
+                            covered_by=covered_by,
+                        )
+                    )
+
+    for relationship in config.relationships:
+        edge_label = relationship.resolved_edge_label()
+        start_label = next(
+            item.resolved_vertex_label()
+            for item in config.classes
+            if item.iri == relationship.source_class_iri
+        )
+        for prop in relationship.properties:
+            property_key = prop.resolved_property_key()
+            data_type = schema_plan.property_keys[property_key].data_type
+
+            if supports_auto_graph_index(prop.cardinality):
+                details = {
+                    "pattern_type": "graph",
+                    "element": "edge",
+                    "label": edge_label,
+                    "kind": "composite",
+                    "property_keys": [property_key],
+                    "keys": [{"property_key": property_key}],
+                    "index_only": edge_label,
+                }
+                covered_by = _match_graph_index(details, schema_plan)
+                recommendations.append(
+                    IndexRecommendation(
+                        name=safe_name(f"{edge_label} {property_key} Edge Lookup"),
+                        category="graph_index",
+                        status="satisfied" if covered_by else "recommended",
+                        rationale="Exact-match edge lookups are best served by label-scoped composite graph indexes.",
+                        details=details,
+                        covered_by=covered_by,
+                    )
+                )
+
+            if supports_auto_graph_index(prop.cardinality) and supports_relation_index_data_type(data_type):
+                details = {
+                    "pattern_type": "traversal",
+                    "edge_label": edge_label,
+                    "start_label": start_label,
+                    "direction": "BOTH",
+                    "sort_order": default_relation_index_sort_order(data_type),
+                    "property_keys": [property_key],
+                }
+                covered_by = _match_edge_relation_index(details, schema_plan)
+                recommendations.append(
+                    IndexRecommendation(
+                        name=safe_name(f"{edge_label} {property_key} Incident Traversal"),
+                        category="edge_relation_index",
+                        status="satisfied" if covered_by else "recommended",
+                        rationale="Incident-edge traversals with edge-property filters benefit from vertex-centric edge relation indexes.",
+                        details=details,
+                        covered_by=covered_by,
+                    )
+                )
+
+    return recommendations
 
 
 def _recommend_edge_relation_index(pattern: QueryPatternDefinition, schema_plan: SchemaPlan) -> IndexRecommendation:

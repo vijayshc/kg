@@ -380,6 +380,7 @@ class LoadedGraphIntegrationTests(unittest.TestCase):
         cls.mapping_path = ROOT / "config" / "ontology_mapping.test.yaml"
         cls.config = kg_loader.LoaderConfig.from_file(str(cls.mapping_path))
         cls.ontology = kg_loader.load_ontology(cls.config.ontology)
+        cls.schema_plan = kg_loader.SchemaPlanner(cls.config, cls.ontology).build()
         cls.load_report = json.loads((ROOT / "load_report.test.json").read_text(encoding="utf-8"))
 
         cls.graph = GraphClient(cls.config.janusgraph.url, cls.config.janusgraph.traversal_source)
@@ -400,15 +401,18 @@ class LoadedGraphIntegrationTests(unittest.TestCase):
         cls.expected_edge_counts = Counter(item.label for item in cls.expected_edges.values())
         cls.class_mappings_by_label = {item.resolved_vertex_label(): item for item in cls.config.classes}
         cls.relationship_mappings_by_label = {item.resolved_edge_label(): item for item in cls.config.relationships}
-        cls.expected_graph_index_names = ["byExternalId", "byEdgeExternalId", *[item.name for item in cls.config.indexes]]
+        cls.expected_graph_index_names = [
+            *cls.schema_plan.vertex_indexes.keys(),
+            *cls.schema_plan.edge_indexes.keys(),
+        ]
         cls.expected_relation_indexes = [
             *[
                 {"name": item.name, "relation_type": item.edge_label, "relation_kind": "edge"}
-                for item in cls.config.edge_relation_indexes
+                for item in cls.schema_plan.edge_relation_indexes.values()
             ],
             *[
                 {"name": item.name, "relation_type": item.property_key, "relation_kind": "property"}
-                for item in cls.config.property_relation_indexes
+                for item in cls.schema_plan.property_relation_indexes.values()
             ],
         ]
         cls.expected_vertex_ids_by_label = {
@@ -520,11 +524,12 @@ class LoadedGraphIntegrationTests(unittest.TestCase):
 
     def test_query_pattern_recommendations_are_reported(self) -> None:
         recommendations = {item["name"]: item for item in self.load_report["query_pattern_recommendations"]}
-        self.assertIn("Customer_Email_Lookup", recommendations)
-        self.assertIn("Customer_Name_Search", recommendations)
-        self.assertEqual(recommendations["Customer_Email_Lookup"]["status"], "satisfied")
-        self.assertEqual(recommendations["Customer_Name_Search"]["status"], "recommended")
-        self.assertEqual(recommendations["Customer_Name_Search"]["details"]["kind"], "mixed")
+        self.assertIn("Customer_email_Exact_Lookup", recommendations)
+        self.assertIn("postedTransaction_transactionDateEdge_Incident_Traversal", recommendations)
+        self.assertIn("balanceSnapshot_balanceRecordedAt_Meta_Traversal", recommendations)
+        self.assertEqual(recommendations["Customer_email_Exact_Lookup"]["status"], "satisfied")
+        self.assertEqual(recommendations["postedTransaction_transactionDateEdge_Incident_Traversal"]["status"], "satisfied")
+        self.assertEqual(recommendations["balanceSnapshot_balanceRecordedAt_Meta_Traversal"]["status"], "satisfied")
 
     def test_vertex_counts_match_input_data(self) -> None:
         for label, expected_count in sorted(self.expected_vertex_counts.items()):

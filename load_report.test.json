@@ -1,5 +1,5 @@
 {
-  "batch_id": "20260310T171355Z",
+  "batch_id": "20260311T045444Z",
   "classes": {
     "Account": {
       "attribute_updates": 0,
@@ -231,12 +231,122 @@
     }
   },
   "dry_run": false,
-  "finished_at": "2026-03-10T17:14:00.120124Z",
+  "finished_at": "2026-03-11T04:54:50.922137Z",
   "mode": "test",
   "query_pattern_recommendations": [
     {
       "category": "graph_index",
-      "covered_by": "customerByEmail",
+      "covered_by": "auto_vertex_Customer_customerName",
+      "details": {
+        "element": "vertex",
+        "index_only": "Customer",
+        "keys": [
+          {
+            "property_key": "customerName"
+          }
+        ],
+        "kind": "composite",
+        "label": "Customer",
+        "pattern_type": "graph",
+        "property_keys": [
+          "customerName"
+        ]
+      },
+      "name": "Customer_customerName_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Customer_dateOfBirth",
+      "details": {
+        "element": "vertex",
+        "index_only": "Customer",
+        "keys": [
+          {
+            "property_key": "dateOfBirth"
+          }
+        ],
+        "kind": "composite",
+        "label": "Customer",
+        "pattern_type": "graph",
+        "property_keys": [
+          "dateOfBirth"
+        ]
+      },
+      "name": "Customer_dateOfBirth_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Customer_customerSegment",
+      "details": {
+        "element": "vertex",
+        "index_only": "Customer",
+        "keys": [
+          {
+            "property_key": "customerSegment"
+          }
+        ],
+        "kind": "composite",
+        "label": "Customer",
+        "pattern_type": "graph",
+        "property_keys": [
+          "customerSegment"
+        ]
+      },
+      "name": "Customer_customerSegment_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Customer_riskRating",
+      "details": {
+        "element": "vertex",
+        "index_only": "Customer",
+        "keys": [
+          {
+            "property_key": "riskRating"
+          }
+        ],
+        "kind": "composite",
+        "label": "Customer",
+        "pattern_type": "graph",
+        "property_keys": [
+          "riskRating"
+        ]
+      },
+      "name": "Customer_riskRating_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Customer_kycStatus",
+      "details": {
+        "element": "vertex",
+        "index_only": "Customer",
+        "keys": [
+          {
+            "property_key": "kycStatus"
+          }
+        ],
+        "kind": "composite",
+        "label": "Customer",
+        "pattern_type": "graph",
+        "property_keys": [
+          "kycStatus"
+        ]
+      },
+      "name": "Customer_kycStatus_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Customer_email",
       "details": {
         "element": "vertex",
         "index_only": "Customer",
@@ -252,54 +362,497 @@
           "email"
         ]
       },
-      "name": "Customer_Email_Lookup",
-      "rationale": "Graph lookup uses equality predicates that are a good fit for a composite graph index",
+      "name": "Customer_email_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
       "status": "satisfied"
     },
     {
       "category": "graph_index",
+      "covered_by": "auto_vertex_Customer_city",
       "details": {
-        "backend": "search",
         "element": "vertex",
         "index_only": "Customer",
         "keys": [
           {
-            "mapping": "TEXT",
-            "property_key": "customerName"
+            "property_key": "city"
           }
         ],
-        "kind": "mixed",
+        "kind": "composite",
         "label": "Customer",
         "pattern_type": "graph",
         "property_keys": [
-          "customerName"
+          "city"
         ]
       },
-      "name": "Customer_Name_Search",
-      "rationale": "Graph lookup uses text/range/order predicates that benefit from a mixed index",
-      "status": "recommended"
+      "name": "Customer_city_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
     },
     {
-      "category": "edge_relation_index",
-      "covered_by": "postedTransactionsByDebitAndDate",
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Customer_state",
       "details": {
-        "direction": "OUT",
-        "edge_label": "postedTransaction",
-        "pattern_type": "traversal",
-        "property_keys": [
-          "debitCredit",
-          "transactionDateEdge"
+        "element": "vertex",
+        "index_only": "Customer",
+        "keys": [
+          {
+            "property_key": "state"
+          }
         ],
-        "sort_order": "desc",
-        "start_label": "Account"
+        "kind": "composite",
+        "label": "Customer",
+        "pattern_type": "graph",
+        "property_keys": [
+          "state"
+        ]
       },
-      "name": "Recent_Debit_Transactions_By_Account",
-      "rationale": "Traversal filters or orders incident edges by edge properties; a vertex-centric edge index reduces in-memory filtering for high-degree vertices",
+      "name": "Customer_state_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Customer_country",
+      "details": {
+        "element": "vertex",
+        "index_only": "Customer",
+        "keys": [
+          {
+            "property_key": "country"
+          }
+        ],
+        "kind": "composite",
+        "label": "Customer",
+        "pattern_type": "graph",
+        "property_keys": [
+          "country"
+        ]
+      },
+      "name": "Customer_country_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Customer_postalCode",
+      "details": {
+        "element": "vertex",
+        "index_only": "Customer",
+        "keys": [
+          {
+            "property_key": "postalCode"
+          }
+        ],
+        "kind": "composite",
+        "label": "Customer",
+        "pattern_type": "graph",
+        "property_keys": [
+          "postalCode"
+        ]
+      },
+      "name": "Customer_postalCode_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Customer_mobilePhone",
+      "details": {
+        "element": "vertex",
+        "index_only": "Customer",
+        "keys": [
+          {
+            "property_key": "mobilePhone"
+          }
+        ],
+        "kind": "composite",
+        "label": "Customer",
+        "pattern_type": "graph",
+        "property_keys": [
+          "mobilePhone"
+        ]
+      },
+      "name": "Customer_mobilePhone_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Branch_branchCode",
+      "details": {
+        "element": "vertex",
+        "index_only": "Branch",
+        "keys": [
+          {
+            "property_key": "branchCode"
+          }
+        ],
+        "kind": "composite",
+        "label": "Branch",
+        "pattern_type": "graph",
+        "property_keys": [
+          "branchCode"
+        ]
+      },
+      "name": "Branch_branchCode_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Branch_branchName",
+      "details": {
+        "element": "vertex",
+        "index_only": "Branch",
+        "keys": [
+          {
+            "property_key": "branchName"
+          }
+        ],
+        "kind": "composite",
+        "label": "Branch",
+        "pattern_type": "graph",
+        "property_keys": [
+          "branchName"
+        ]
+      },
+      "name": "Branch_branchName_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Branch_city",
+      "details": {
+        "element": "vertex",
+        "index_only": "Branch",
+        "keys": [
+          {
+            "property_key": "city"
+          }
+        ],
+        "kind": "composite",
+        "label": "Branch",
+        "pattern_type": "graph",
+        "property_keys": [
+          "city"
+        ]
+      },
+      "name": "Branch_city_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Branch_state",
+      "details": {
+        "element": "vertex",
+        "index_only": "Branch",
+        "keys": [
+          {
+            "property_key": "state"
+          }
+        ],
+        "kind": "composite",
+        "label": "Branch",
+        "pattern_type": "graph",
+        "property_keys": [
+          "state"
+        ]
+      },
+      "name": "Branch_state_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Branch_region",
+      "details": {
+        "element": "vertex",
+        "index_only": "Branch",
+        "keys": [
+          {
+            "property_key": "region"
+          }
+        ],
+        "kind": "composite",
+        "label": "Branch",
+        "pattern_type": "graph",
+        "property_keys": [
+          "region"
+        ]
+      },
+      "name": "Branch_region_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Employee_employeeName",
+      "details": {
+        "element": "vertex",
+        "index_only": "Employee",
+        "keys": [
+          {
+            "property_key": "employeeName"
+          }
+        ],
+        "kind": "composite",
+        "label": "Employee",
+        "pattern_type": "graph",
+        "property_keys": [
+          "employeeName"
+        ]
+      },
+      "name": "Employee_employeeName_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Employee_role",
+      "details": {
+        "element": "vertex",
+        "index_only": "Employee",
+        "keys": [
+          {
+            "property_key": "role"
+          }
+        ],
+        "kind": "composite",
+        "label": "Employee",
+        "pattern_type": "graph",
+        "property_keys": [
+          "role"
+        ]
+      },
+      "name": "Employee_role_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Employee_region",
+      "details": {
+        "element": "vertex",
+        "index_only": "Employee",
+        "keys": [
+          {
+            "property_key": "region"
+          }
+        ],
+        "kind": "composite",
+        "label": "Employee",
+        "pattern_type": "graph",
+        "property_keys": [
+          "region"
+        ]
+      },
+      "name": "Employee_region_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Product_productCode",
+      "details": {
+        "element": "vertex",
+        "index_only": "Product",
+        "keys": [
+          {
+            "property_key": "productCode"
+          }
+        ],
+        "kind": "composite",
+        "label": "Product",
+        "pattern_type": "graph",
+        "property_keys": [
+          "productCode"
+        ]
+      },
+      "name": "Product_productCode_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Product_productName",
+      "details": {
+        "element": "vertex",
+        "index_only": "Product",
+        "keys": [
+          {
+            "property_key": "productName"
+          }
+        ],
+        "kind": "composite",
+        "label": "Product",
+        "pattern_type": "graph",
+        "property_keys": [
+          "productName"
+        ]
+      },
+      "name": "Product_productName_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Product_productType",
+      "details": {
+        "element": "vertex",
+        "index_only": "Product",
+        "keys": [
+          {
+            "property_key": "productType"
+          }
+        ],
+        "kind": "composite",
+        "label": "Product",
+        "pattern_type": "graph",
+        "property_keys": [
+          "productType"
+        ]
+      },
+      "name": "Product_productType_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Product_interestRate",
+      "details": {
+        "element": "vertex",
+        "index_only": "Product",
+        "keys": [
+          {
+            "property_key": "interestRate"
+          }
+        ],
+        "kind": "composite",
+        "label": "Product",
+        "pattern_type": "graph",
+        "property_keys": [
+          "interestRate"
+        ]
+      },
+      "name": "Product_interestRate_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Account_accountNumber",
+      "details": {
+        "element": "vertex",
+        "index_only": "Account",
+        "keys": [
+          {
+            "property_key": "accountNumber"
+          }
+        ],
+        "kind": "composite",
+        "label": "Account",
+        "pattern_type": "graph",
+        "property_keys": [
+          "accountNumber"
+        ]
+      },
+      "name": "Account_accountNumber_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Account_accountType",
+      "details": {
+        "element": "vertex",
+        "index_only": "Account",
+        "keys": [
+          {
+            "property_key": "accountType"
+          }
+        ],
+        "kind": "composite",
+        "label": "Account",
+        "pattern_type": "graph",
+        "property_keys": [
+          "accountType"
+        ]
+      },
+      "name": "Account_accountType_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Account_accountStatus",
+      "details": {
+        "element": "vertex",
+        "index_only": "Account",
+        "keys": [
+          {
+            "property_key": "accountStatus"
+          }
+        ],
+        "kind": "composite",
+        "label": "Account",
+        "pattern_type": "graph",
+        "property_keys": [
+          "accountStatus"
+        ]
+      },
+      "name": "Account_accountStatus_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Account_openDate",
+      "details": {
+        "element": "vertex",
+        "index_only": "Account",
+        "keys": [
+          {
+            "property_key": "openDate"
+          }
+        ],
+        "kind": "composite",
+        "label": "Account",
+        "pattern_type": "graph",
+        "property_keys": [
+          "openDate"
+        ]
+      },
+      "name": "Account_openDate_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Account_currentBalance",
+      "details": {
+        "element": "vertex",
+        "index_only": "Account",
+        "keys": [
+          {
+            "property_key": "currentBalance"
+          }
+        ],
+        "kind": "composite",
+        "label": "Account",
+        "pattern_type": "graph",
+        "property_keys": [
+          "currentBalance"
+        ]
+      },
+      "name": "Account_currentBalance_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
       "status": "satisfied"
     },
     {
       "category": "property_relation_index",
-      "covered_by": "balanceSnapshotByRecordedAt",
+      "covered_by": "auto_property_rel_balanceSnapshot_balanceRecordedAt",
       "details": {
         "meta_property_keys": [
           "balanceRecordedAt"
@@ -308,8 +861,707 @@
         "property_key": "balanceSnapshot",
         "sort_order": "desc"
       },
-      "name": "Current_Balance_By_Recorded_At",
-      "rationale": "Query traverses vertex properties by meta-properties; a JanusGraph property relation index speeds up meta-property lookups",
+      "name": "balanceSnapshot_balanceRecordedAt_Meta_Traversal",
+      "rationale": "Repeated vertex-property values with meta-properties benefit from property relation indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "property_relation_index",
+      "covered_by": "auto_property_rel_balanceSnapshot_propertyOrigin",
+      "details": {
+        "meta_property_keys": [
+          "propertyOrigin"
+        ],
+        "pattern_type": "property_meta",
+        "property_key": "balanceSnapshot",
+        "sort_order": "asc"
+      },
+      "name": "balanceSnapshot_propertyOrigin_Meta_Traversal",
+      "rationale": "Repeated vertex-property values with meta-properties benefit from property relation indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Account_currencyCode",
+      "details": {
+        "element": "vertex",
+        "index_only": "Account",
+        "keys": [
+          {
+            "property_key": "currencyCode"
+          }
+        ],
+        "kind": "composite",
+        "label": "Account",
+        "pattern_type": "graph",
+        "property_keys": [
+          "currencyCode"
+        ]
+      },
+      "name": "Account_currencyCode_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Card_cardNumberMasked",
+      "details": {
+        "element": "vertex",
+        "index_only": "Card",
+        "keys": [
+          {
+            "property_key": "cardNumberMasked"
+          }
+        ],
+        "kind": "composite",
+        "label": "Card",
+        "pattern_type": "graph",
+        "property_keys": [
+          "cardNumberMasked"
+        ]
+      },
+      "name": "Card_cardNumberMasked_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Card_cardType",
+      "details": {
+        "element": "vertex",
+        "index_only": "Card",
+        "keys": [
+          {
+            "property_key": "cardType"
+          }
+        ],
+        "kind": "composite",
+        "label": "Card",
+        "pattern_type": "graph",
+        "property_keys": [
+          "cardType"
+        ]
+      },
+      "name": "Card_cardType_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Card_cardStatus",
+      "details": {
+        "element": "vertex",
+        "index_only": "Card",
+        "keys": [
+          {
+            "property_key": "cardStatus"
+          }
+        ],
+        "kind": "composite",
+        "label": "Card",
+        "pattern_type": "graph",
+        "property_keys": [
+          "cardStatus"
+        ]
+      },
+      "name": "Card_cardStatus_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Card_expiryDate",
+      "details": {
+        "element": "vertex",
+        "index_only": "Card",
+        "keys": [
+          {
+            "property_key": "expiryDate"
+          }
+        ],
+        "kind": "composite",
+        "label": "Card",
+        "pattern_type": "graph",
+        "property_keys": [
+          "expiryDate"
+        ]
+      },
+      "name": "Card_expiryDate_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Loan_loanNumber",
+      "details": {
+        "element": "vertex",
+        "index_only": "Loan",
+        "keys": [
+          {
+            "property_key": "loanNumber"
+          }
+        ],
+        "kind": "composite",
+        "label": "Loan",
+        "pattern_type": "graph",
+        "property_keys": [
+          "loanNumber"
+        ]
+      },
+      "name": "Loan_loanNumber_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Loan_loanType",
+      "details": {
+        "element": "vertex",
+        "index_only": "Loan",
+        "keys": [
+          {
+            "property_key": "loanType"
+          }
+        ],
+        "kind": "composite",
+        "label": "Loan",
+        "pattern_type": "graph",
+        "property_keys": [
+          "loanType"
+        ]
+      },
+      "name": "Loan_loanType_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Loan_principalAmount",
+      "details": {
+        "element": "vertex",
+        "index_only": "Loan",
+        "keys": [
+          {
+            "property_key": "principalAmount"
+          }
+        ],
+        "kind": "composite",
+        "label": "Loan",
+        "pattern_type": "graph",
+        "property_keys": [
+          "principalAmount"
+        ]
+      },
+      "name": "Loan_principalAmount_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Loan_outstandingAmount",
+      "details": {
+        "element": "vertex",
+        "index_only": "Loan",
+        "keys": [
+          {
+            "property_key": "outstandingAmount"
+          }
+        ],
+        "kind": "composite",
+        "label": "Loan",
+        "pattern_type": "graph",
+        "property_keys": [
+          "outstandingAmount"
+        ]
+      },
+      "name": "Loan_outstandingAmount_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Loan_loanStatus",
+      "details": {
+        "element": "vertex",
+        "index_only": "Loan",
+        "keys": [
+          {
+            "property_key": "loanStatus"
+          }
+        ],
+        "kind": "composite",
+        "label": "Loan",
+        "pattern_type": "graph",
+        "property_keys": [
+          "loanStatus"
+        ]
+      },
+      "name": "Loan_loanStatus_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Transaction_transactionCode",
+      "details": {
+        "element": "vertex",
+        "index_only": "Transaction",
+        "keys": [
+          {
+            "property_key": "transactionCode"
+          }
+        ],
+        "kind": "composite",
+        "label": "Transaction",
+        "pattern_type": "graph",
+        "property_keys": [
+          "transactionCode"
+        ]
+      },
+      "name": "Transaction_transactionCode_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Transaction_transactionDate",
+      "details": {
+        "element": "vertex",
+        "index_only": "Transaction",
+        "keys": [
+          {
+            "property_key": "transactionDate"
+          }
+        ],
+        "kind": "composite",
+        "label": "Transaction",
+        "pattern_type": "graph",
+        "property_keys": [
+          "transactionDate"
+        ]
+      },
+      "name": "Transaction_transactionDate_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Transaction_transactionAmount",
+      "details": {
+        "element": "vertex",
+        "index_only": "Transaction",
+        "keys": [
+          {
+            "property_key": "transactionAmount"
+          }
+        ],
+        "kind": "composite",
+        "label": "Transaction",
+        "pattern_type": "graph",
+        "property_keys": [
+          "transactionAmount"
+        ]
+      },
+      "name": "Transaction_transactionAmount_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Transaction_channel",
+      "details": {
+        "element": "vertex",
+        "index_only": "Transaction",
+        "keys": [
+          {
+            "property_key": "channel"
+          }
+        ],
+        "kind": "composite",
+        "label": "Transaction",
+        "pattern_type": "graph",
+        "property_keys": [
+          "channel"
+        ]
+      },
+      "name": "Transaction_channel_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Transaction_transactionType",
+      "details": {
+        "element": "vertex",
+        "index_only": "Transaction",
+        "keys": [
+          {
+            "property_key": "transactionType"
+          }
+        ],
+        "kind": "composite",
+        "label": "Transaction",
+        "pattern_type": "graph",
+        "property_keys": [
+          "transactionType"
+        ]
+      },
+      "name": "Transaction_transactionType_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Transaction_debitCredit",
+      "details": {
+        "element": "vertex",
+        "index_only": "Transaction",
+        "keys": [
+          {
+            "property_key": "debitCredit"
+          }
+        ],
+        "kind": "composite",
+        "label": "Transaction",
+        "pattern_type": "graph",
+        "property_keys": [
+          "debitCredit"
+        ]
+      },
+      "name": "Transaction_debitCredit_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Beneficiary_beneficiaryName",
+      "details": {
+        "element": "vertex",
+        "index_only": "Beneficiary",
+        "keys": [
+          {
+            "property_key": "beneficiaryName"
+          }
+        ],
+        "kind": "composite",
+        "label": "Beneficiary",
+        "pattern_type": "graph",
+        "property_keys": [
+          "beneficiaryName"
+        ]
+      },
+      "name": "Beneficiary_beneficiaryName_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Beneficiary_bankName",
+      "details": {
+        "element": "vertex",
+        "index_only": "Beneficiary",
+        "keys": [
+          {
+            "property_key": "bankName"
+          }
+        ],
+        "kind": "composite",
+        "label": "Beneficiary",
+        "pattern_type": "graph",
+        "property_keys": [
+          "bankName"
+        ]
+      },
+      "name": "Beneficiary_bankName_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Beneficiary_beneficiaryAccount",
+      "details": {
+        "element": "vertex",
+        "index_only": "Beneficiary",
+        "keys": [
+          {
+            "property_key": "beneficiaryAccount"
+          }
+        ],
+        "kind": "composite",
+        "label": "Beneficiary",
+        "pattern_type": "graph",
+        "property_keys": [
+          "beneficiaryAccount"
+        ]
+      },
+      "name": "Beneficiary_beneficiaryAccount_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Alert_alertCode",
+      "details": {
+        "element": "vertex",
+        "index_only": "Alert",
+        "keys": [
+          {
+            "property_key": "alertCode"
+          }
+        ],
+        "kind": "composite",
+        "label": "Alert",
+        "pattern_type": "graph",
+        "property_keys": [
+          "alertCode"
+        ]
+      },
+      "name": "Alert_alertCode_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Alert_alertType",
+      "details": {
+        "element": "vertex",
+        "index_only": "Alert",
+        "keys": [
+          {
+            "property_key": "alertType"
+          }
+        ],
+        "kind": "composite",
+        "label": "Alert",
+        "pattern_type": "graph",
+        "property_keys": [
+          "alertType"
+        ]
+      },
+      "name": "Alert_alertType_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Alert_severity",
+      "details": {
+        "element": "vertex",
+        "index_only": "Alert",
+        "keys": [
+          {
+            "property_key": "severity"
+          }
+        ],
+        "kind": "composite",
+        "label": "Alert",
+        "pattern_type": "graph",
+        "property_keys": [
+          "severity"
+        ]
+      },
+      "name": "Alert_severity_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Alert_alertStatus",
+      "details": {
+        "element": "vertex",
+        "index_only": "Alert",
+        "keys": [
+          {
+            "property_key": "alertStatus"
+          }
+        ],
+        "kind": "composite",
+        "label": "Alert",
+        "pattern_type": "graph",
+        "property_keys": [
+          "alertStatus"
+        ]
+      },
+      "name": "Alert_alertStatus_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_vertex_Alert_raisedAt",
+      "details": {
+        "element": "vertex",
+        "index_only": "Alert",
+        "keys": [
+          {
+            "property_key": "raisedAt"
+          }
+        ],
+        "kind": "composite",
+        "label": "Alert",
+        "pattern_type": "graph",
+        "property_keys": [
+          "raisedAt"
+        ]
+      },
+      "name": "Alert_raisedAt_Exact_Lookup",
+      "rationale": "Exact-match vertex lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_edge_ownsAccount_relationshipType",
+      "details": {
+        "element": "edge",
+        "index_only": "ownsAccount",
+        "keys": [
+          {
+            "property_key": "relationshipType"
+          }
+        ],
+        "kind": "composite",
+        "label": "ownsAccount",
+        "pattern_type": "graph",
+        "property_keys": [
+          "relationshipType"
+        ]
+      },
+      "name": "ownsAccount_relationshipType_Edge_Lookup",
+      "rationale": "Exact-match edge lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "edge_relation_index",
+      "covered_by": "auto_edge_rel_ownsAccount_relationshipType",
+      "details": {
+        "direction": "BOTH",
+        "edge_label": "ownsAccount",
+        "pattern_type": "traversal",
+        "property_keys": [
+          "relationshipType"
+        ],
+        "sort_order": "asc",
+        "start_label": "Customer"
+      },
+      "name": "ownsAccount_relationshipType_Incident_Traversal",
+      "rationale": "Incident-edge traversals with edge-property filters benefit from vertex-centric edge relation indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_edge_postedTransaction_transactionDateEdge",
+      "details": {
+        "element": "edge",
+        "index_only": "postedTransaction",
+        "keys": [
+          {
+            "property_key": "transactionDateEdge"
+          }
+        ],
+        "kind": "composite",
+        "label": "postedTransaction",
+        "pattern_type": "graph",
+        "property_keys": [
+          "transactionDateEdge"
+        ]
+      },
+      "name": "postedTransaction_transactionDateEdge_Edge_Lookup",
+      "rationale": "Exact-match edge lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "edge_relation_index",
+      "covered_by": "auto_edge_rel_postedTransaction_transactionDateEdge",
+      "details": {
+        "direction": "BOTH",
+        "edge_label": "postedTransaction",
+        "pattern_type": "traversal",
+        "property_keys": [
+          "transactionDateEdge"
+        ],
+        "sort_order": "desc",
+        "start_label": "Account"
+      },
+      "name": "postedTransaction_transactionDateEdge_Incident_Traversal",
+      "rationale": "Incident-edge traversals with edge-property filters benefit from vertex-centric edge relation indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_edge_postedTransaction_debitCredit",
+      "details": {
+        "element": "edge",
+        "index_only": "postedTransaction",
+        "keys": [
+          {
+            "property_key": "debitCredit"
+          }
+        ],
+        "kind": "composite",
+        "label": "postedTransaction",
+        "pattern_type": "graph",
+        "property_keys": [
+          "debitCredit"
+        ]
+      },
+      "name": "postedTransaction_debitCredit_Edge_Lookup",
+      "rationale": "Exact-match edge lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "edge_relation_index",
+      "covered_by": "auto_edge_rel_postedTransaction_debitCredit",
+      "details": {
+        "direction": "BOTH",
+        "edge_label": "postedTransaction",
+        "pattern_type": "traversal",
+        "property_keys": [
+          "debitCredit"
+        ],
+        "sort_order": "asc",
+        "start_label": "Account"
+      },
+      "name": "postedTransaction_debitCredit_Incident_Traversal",
+      "rationale": "Incident-edge traversals with edge-property filters benefit from vertex-centric edge relation indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "graph_index",
+      "covered_by": "auto_edge_postedTransaction_channel",
+      "details": {
+        "element": "edge",
+        "index_only": "postedTransaction",
+        "keys": [
+          {
+            "property_key": "channel"
+          }
+        ],
+        "kind": "composite",
+        "label": "postedTransaction",
+        "pattern_type": "graph",
+        "property_keys": [
+          "channel"
+        ]
+      },
+      "name": "postedTransaction_channel_Edge_Lookup",
+      "rationale": "Exact-match edge lookups are best served by label-scoped composite graph indexes.",
+      "status": "satisfied"
+    },
+    {
+      "category": "edge_relation_index",
+      "covered_by": "auto_edge_rel_postedTransaction_channel",
+      "details": {
+        "direction": "BOTH",
+        "edge_label": "postedTransaction",
+        "pattern_type": "traversal",
+        "property_keys": [
+          "channel"
+        ],
+        "sort_order": "asc",
+        "start_label": "Account"
+      },
+      "name": "postedTransaction_channel_Incident_Traversal",
+      "rationale": "Incident-edge traversals with edge-property filters benefit from vertex-centric edge relation indexes.",
       "status": "satisfied"
     }
   ],
@@ -525,10 +1777,55 @@
           }
         ],
         "kind": "composite",
-        "name": "ownsAccountByRelationshipType",
+        "name": "auto_edge_ownsAccount_relationshipType",
         "property_key": "relationshipType",
         "property_keys": [
           "relationshipType"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "postedTransaction",
+        "keys": [
+          {
+            "property_key": "transactionDateEdge"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_edge_postedTransaction_transactionDateEdge",
+        "property_key": "transactionDateEdge",
+        "property_keys": [
+          "transactionDateEdge"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "postedTransaction",
+        "keys": [
+          {
+            "property_key": "debitCredit"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_edge_postedTransaction_debitCredit",
+        "property_key": "debitCredit",
+        "property_keys": [
+          "debitCredit"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "postedTransaction",
+        "keys": [
+          {
+            "property_key": "channel"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_edge_postedTransaction_channel",
+        "property_key": "channel",
+        "property_keys": [
+          "channel"
         ],
         "unique": false
       }
@@ -713,21 +2010,38 @@
     ],
     "edge_relation_indexes": [
       {
-        "direction": "OUT",
-        "edge_label": "postedTransaction",
-        "name": "postedTransactionsByDebitAndDate",
+        "direction": "BOTH",
+        "edge_label": "ownsAccount",
+        "name": "auto_edge_rel_ownsAccount_relationshipType",
         "property_keys": [
-          "debitCredit",
+          "relationshipType"
+        ],
+        "sort_order": "asc"
+      },
+      {
+        "direction": "BOTH",
+        "edge_label": "postedTransaction",
+        "name": "auto_edge_rel_postedTransaction_transactionDateEdge",
+        "property_keys": [
           "transactionDateEdge"
         ],
         "sort_order": "desc"
       },
       {
-        "direction": "OUT",
-        "edge_label": "ownsAccount",
-        "name": "ownsAccountByRelationshipTypeVc",
+        "direction": "BOTH",
+        "edge_label": "postedTransaction",
+        "name": "auto_edge_rel_postedTransaction_debitCredit",
         "property_keys": [
-          "relationshipType"
+          "debitCredit"
+        ],
+        "sort_order": "asc"
+      },
+      {
+        "direction": "BOTH",
+        "edge_label": "postedTransaction",
+        "name": "auto_edge_rel_postedTransaction_channel",
+        "property_keys": [
+          "channel"
         ],
         "sort_order": "asc"
       }
@@ -1059,9 +2373,17 @@
         "meta_property_keys": [
           "balanceRecordedAt"
         ],
-        "name": "balanceSnapshotByRecordedAt",
+        "name": "auto_property_rel_balanceSnapshot_balanceRecordedAt",
         "property_key": "balanceSnapshot",
         "sort_order": "desc"
+      },
+      {
+        "meta_property_keys": [
+          "propertyOrigin"
+        ],
+        "name": "auto_property_rel_balanceSnapshot_propertyOrigin",
+        "property_key": "balanceSnapshot",
+        "sort_order": "asc"
       }
     ],
     "vertex_indexes": [
@@ -1083,14 +2405,344 @@
         "index_only": "Customer",
         "keys": [
           {
+            "property_key": "customerName"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Customer_customerName",
+        "property_key": "customerName",
+        "property_keys": [
+          "customerName"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Customer",
+        "keys": [
+          {
+            "property_key": "dateOfBirth"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Customer_dateOfBirth",
+        "property_key": "dateOfBirth",
+        "property_keys": [
+          "dateOfBirth"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Customer",
+        "keys": [
+          {
+            "property_key": "customerSegment"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Customer_customerSegment",
+        "property_key": "customerSegment",
+        "property_keys": [
+          "customerSegment"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Customer",
+        "keys": [
+          {
+            "property_key": "riskRating"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Customer_riskRating",
+        "property_key": "riskRating",
+        "property_keys": [
+          "riskRating"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Customer",
+        "keys": [
+          {
+            "property_key": "kycStatus"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Customer_kycStatus",
+        "property_key": "kycStatus",
+        "property_keys": [
+          "kycStatus"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Customer",
+        "keys": [
+          {
             "property_key": "email"
           }
         ],
         "kind": "composite",
-        "name": "customerByEmail",
+        "name": "auto_vertex_Customer_email",
         "property_key": "email",
         "property_keys": [
           "email"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Customer",
+        "keys": [
+          {
+            "property_key": "city"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Customer_city",
+        "property_key": "city",
+        "property_keys": [
+          "city"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Customer",
+        "keys": [
+          {
+            "property_key": "state"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Customer_state",
+        "property_key": "state",
+        "property_keys": [
+          "state"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Customer",
+        "keys": [
+          {
+            "property_key": "country"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Customer_country",
+        "property_key": "country",
+        "property_keys": [
+          "country"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Customer",
+        "keys": [
+          {
+            "property_key": "postalCode"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Customer_postalCode",
+        "property_key": "postalCode",
+        "property_keys": [
+          "postalCode"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Customer",
+        "keys": [
+          {
+            "property_key": "mobilePhone"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Customer_mobilePhone",
+        "property_key": "mobilePhone",
+        "property_keys": [
+          "mobilePhone"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Branch",
+        "keys": [
+          {
+            "property_key": "branchCode"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Branch_branchCode",
+        "property_key": "branchCode",
+        "property_keys": [
+          "branchCode"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Branch",
+        "keys": [
+          {
+            "property_key": "branchName"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Branch_branchName",
+        "property_key": "branchName",
+        "property_keys": [
+          "branchName"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Branch",
+        "keys": [
+          {
+            "property_key": "city"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Branch_city",
+        "property_key": "city",
+        "property_keys": [
+          "city"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Branch",
+        "keys": [
+          {
+            "property_key": "state"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Branch_state",
+        "property_key": "state",
+        "property_keys": [
+          "state"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Branch",
+        "keys": [
+          {
+            "property_key": "region"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Branch_region",
+        "property_key": "region",
+        "property_keys": [
+          "region"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Employee",
+        "keys": [
+          {
+            "property_key": "employeeName"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Employee_employeeName",
+        "property_key": "employeeName",
+        "property_keys": [
+          "employeeName"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Employee",
+        "keys": [
+          {
+            "property_key": "role"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Employee_role",
+        "property_key": "role",
+        "property_keys": [
+          "role"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Employee",
+        "keys": [
+          {
+            "property_key": "region"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Employee_region",
+        "property_key": "region",
+        "property_keys": [
+          "region"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Product",
+        "keys": [
+          {
+            "property_key": "productCode"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Product_productCode",
+        "property_key": "productCode",
+        "property_keys": [
+          "productCode"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Product",
+        "keys": [
+          {
+            "property_key": "productName"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Product_productName",
+        "property_key": "productName",
+        "property_keys": [
+          "productName"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Product",
+        "keys": [
+          {
+            "property_key": "productType"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Product_productType",
+        "property_key": "productType",
+        "property_keys": [
+          "productType"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Product",
+        "keys": [
+          {
+            "property_key": "interestRate"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Product_interestRate",
+        "property_key": "interestRate",
+        "property_keys": [
+          "interestRate"
         ],
         "unique": false
       },
@@ -1102,28 +2754,430 @@
           }
         ],
         "kind": "composite",
-        "name": "accountByAccountNumber",
+        "name": "auto_vertex_Account_accountNumber",
         "property_key": "accountNumber",
         "property_keys": [
           "accountNumber"
         ],
-        "unique": true
+        "unique": false
+      },
+      {
+        "index_only": "Account",
+        "keys": [
+          {
+            "property_key": "accountType"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Account_accountType",
+        "property_key": "accountType",
+        "property_keys": [
+          "accountType"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Account",
+        "keys": [
+          {
+            "property_key": "accountStatus"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Account_accountStatus",
+        "property_key": "accountStatus",
+        "property_keys": [
+          "accountStatus"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Account",
+        "keys": [
+          {
+            "property_key": "openDate"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Account_openDate",
+        "property_key": "openDate",
+        "property_keys": [
+          "openDate"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Account",
+        "keys": [
+          {
+            "property_key": "currentBalance"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Account_currentBalance",
+        "property_key": "currentBalance",
+        "property_keys": [
+          "currentBalance"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Account",
+        "keys": [
+          {
+            "property_key": "currencyCode"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Account_currencyCode",
+        "property_key": "currencyCode",
+        "property_keys": [
+          "currencyCode"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Card",
+        "keys": [
+          {
+            "property_key": "cardNumberMasked"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Card_cardNumberMasked",
+        "property_key": "cardNumberMasked",
+        "property_keys": [
+          "cardNumberMasked"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Card",
+        "keys": [
+          {
+            "property_key": "cardType"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Card_cardType",
+        "property_key": "cardType",
+        "property_keys": [
+          "cardType"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Card",
+        "keys": [
+          {
+            "property_key": "cardStatus"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Card_cardStatus",
+        "property_key": "cardStatus",
+        "property_keys": [
+          "cardStatus"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Card",
+        "keys": [
+          {
+            "property_key": "expiryDate"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Card_expiryDate",
+        "property_key": "expiryDate",
+        "property_keys": [
+          "expiryDate"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Loan",
+        "keys": [
+          {
+            "property_key": "loanNumber"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Loan_loanNumber",
+        "property_key": "loanNumber",
+        "property_keys": [
+          "loanNumber"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Loan",
+        "keys": [
+          {
+            "property_key": "loanType"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Loan_loanType",
+        "property_key": "loanType",
+        "property_keys": [
+          "loanType"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Loan",
+        "keys": [
+          {
+            "property_key": "principalAmount"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Loan_principalAmount",
+        "property_key": "principalAmount",
+        "property_keys": [
+          "principalAmount"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Loan",
+        "keys": [
+          {
+            "property_key": "outstandingAmount"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Loan_outstandingAmount",
+        "property_key": "outstandingAmount",
+        "property_keys": [
+          "outstandingAmount"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Loan",
+        "keys": [
+          {
+            "property_key": "loanStatus"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Loan_loanStatus",
+        "property_key": "loanStatus",
+        "property_keys": [
+          "loanStatus"
+        ],
+        "unique": false
       },
       {
         "index_only": "Transaction",
         "keys": [
           {
             "property_key": "transactionCode"
-          },
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Transaction_transactionCode",
+        "property_key": "transactionCode",
+        "property_keys": [
+          "transactionCode"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Transaction",
+        "keys": [
           {
             "property_key": "transactionDate"
           }
         ],
         "kind": "composite",
-        "name": "transactionByCodeAndDate",
+        "name": "auto_vertex_Transaction_transactionDate",
+        "property_key": "transactionDate",
         "property_keys": [
-          "transactionCode",
           "transactionDate"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Transaction",
+        "keys": [
+          {
+            "property_key": "transactionAmount"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Transaction_transactionAmount",
+        "property_key": "transactionAmount",
+        "property_keys": [
+          "transactionAmount"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Transaction",
+        "keys": [
+          {
+            "property_key": "channel"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Transaction_channel",
+        "property_key": "channel",
+        "property_keys": [
+          "channel"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Transaction",
+        "keys": [
+          {
+            "property_key": "transactionType"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Transaction_transactionType",
+        "property_key": "transactionType",
+        "property_keys": [
+          "transactionType"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Transaction",
+        "keys": [
+          {
+            "property_key": "debitCredit"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Transaction_debitCredit",
+        "property_key": "debitCredit",
+        "property_keys": [
+          "debitCredit"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Beneficiary",
+        "keys": [
+          {
+            "property_key": "beneficiaryName"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Beneficiary_beneficiaryName",
+        "property_key": "beneficiaryName",
+        "property_keys": [
+          "beneficiaryName"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Beneficiary",
+        "keys": [
+          {
+            "property_key": "bankName"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Beneficiary_bankName",
+        "property_key": "bankName",
+        "property_keys": [
+          "bankName"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Beneficiary",
+        "keys": [
+          {
+            "property_key": "beneficiaryAccount"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Beneficiary_beneficiaryAccount",
+        "property_key": "beneficiaryAccount",
+        "property_keys": [
+          "beneficiaryAccount"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Alert",
+        "keys": [
+          {
+            "property_key": "alertCode"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Alert_alertCode",
+        "property_key": "alertCode",
+        "property_keys": [
+          "alertCode"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Alert",
+        "keys": [
+          {
+            "property_key": "alertType"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Alert_alertType",
+        "property_key": "alertType",
+        "property_keys": [
+          "alertType"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Alert",
+        "keys": [
+          {
+            "property_key": "severity"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Alert_severity",
+        "property_key": "severity",
+        "property_keys": [
+          "severity"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Alert",
+        "keys": [
+          {
+            "property_key": "alertStatus"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Alert_alertStatus",
+        "property_key": "alertStatus",
+        "property_keys": [
+          "alertStatus"
+        ],
+        "unique": false
+      },
+      {
+        "index_only": "Alert",
+        "keys": [
+          {
+            "property_key": "raisedAt"
+          }
+        ],
+        "kind": "composite",
+        "name": "auto_vertex_Alert_raisedAt",
+        "property_key": "raisedAt",
+        "property_keys": [
+          "raisedAt"
         ],
         "unique": false
       }
@@ -1351,11 +3405,63 @@
     "activated_relation_indexes": [],
     "created_graph_indexes": [
       "byExternalId",
-      "customerByEmail",
-      "accountByAccountNumber",
-      "transactionByCodeAndDate",
+      "auto_vertex_Customer_customerName",
+      "auto_vertex_Customer_dateOfBirth",
+      "auto_vertex_Customer_customerSegment",
+      "auto_vertex_Customer_riskRating",
+      "auto_vertex_Customer_kycStatus",
+      "auto_vertex_Customer_email",
+      "auto_vertex_Customer_city",
+      "auto_vertex_Customer_state",
+      "auto_vertex_Customer_country",
+      "auto_vertex_Customer_postalCode",
+      "auto_vertex_Customer_mobilePhone",
+      "auto_vertex_Branch_branchCode",
+      "auto_vertex_Branch_branchName",
+      "auto_vertex_Branch_city",
+      "auto_vertex_Branch_state",
+      "auto_vertex_Branch_region",
+      "auto_vertex_Employee_employeeName",
+      "auto_vertex_Employee_role",
+      "auto_vertex_Employee_region",
+      "auto_vertex_Product_productCode",
+      "auto_vertex_Product_productName",
+      "auto_vertex_Product_productType",
+      "auto_vertex_Product_interestRate",
+      "auto_vertex_Account_accountNumber",
+      "auto_vertex_Account_accountType",
+      "auto_vertex_Account_accountStatus",
+      "auto_vertex_Account_openDate",
+      "auto_vertex_Account_currentBalance",
+      "auto_vertex_Account_currencyCode",
+      "auto_vertex_Card_cardNumberMasked",
+      "auto_vertex_Card_cardType",
+      "auto_vertex_Card_cardStatus",
+      "auto_vertex_Card_expiryDate",
+      "auto_vertex_Loan_loanNumber",
+      "auto_vertex_Loan_loanType",
+      "auto_vertex_Loan_principalAmount",
+      "auto_vertex_Loan_outstandingAmount",
+      "auto_vertex_Loan_loanStatus",
+      "auto_vertex_Transaction_transactionCode",
+      "auto_vertex_Transaction_transactionDate",
+      "auto_vertex_Transaction_transactionAmount",
+      "auto_vertex_Transaction_channel",
+      "auto_vertex_Transaction_transactionType",
+      "auto_vertex_Transaction_debitCredit",
+      "auto_vertex_Beneficiary_beneficiaryName",
+      "auto_vertex_Beneficiary_bankName",
+      "auto_vertex_Beneficiary_beneficiaryAccount",
+      "auto_vertex_Alert_alertCode",
+      "auto_vertex_Alert_alertType",
+      "auto_vertex_Alert_severity",
+      "auto_vertex_Alert_alertStatus",
+      "auto_vertex_Alert_raisedAt",
       "byEdgeExternalId",
-      "ownsAccountByRelationshipType"
+      "auto_edge_ownsAccount_relationshipType",
+      "auto_edge_postedTransaction_transactionDateEdge",
+      "auto_edge_postedTransaction_debitCredit",
+      "auto_edge_postedTransaction_channel"
     ],
     "graph_indexes": [
       {
@@ -1371,7 +3477,62 @@
       {
         "index_only": "Customer",
         "kind": "composite",
-        "name": "customerByEmail",
+        "name": "auto_vertex_Customer_customerName",
+        "property_keys": [
+          "customerName"
+        ],
+        "statuses": {
+          "customerName": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Customer",
+        "kind": "composite",
+        "name": "auto_vertex_Customer_dateOfBirth",
+        "property_keys": [
+          "dateOfBirth"
+        ],
+        "statuses": {
+          "dateOfBirth": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Customer",
+        "kind": "composite",
+        "name": "auto_vertex_Customer_customerSegment",
+        "property_keys": [
+          "customerSegment"
+        ],
+        "statuses": {
+          "customerSegment": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Customer",
+        "kind": "composite",
+        "name": "auto_vertex_Customer_riskRating",
+        "property_keys": [
+          "riskRating"
+        ],
+        "statuses": {
+          "riskRating": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Customer",
+        "kind": "composite",
+        "name": "auto_vertex_Customer_kycStatus",
+        "property_keys": [
+          "kycStatus"
+        ],
+        "statuses": {
+          "kycStatus": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Customer",
+        "kind": "composite",
+        "name": "auto_vertex_Customer_email",
         "property_keys": [
           "email"
         ],
@@ -1380,9 +3541,196 @@
         }
       },
       {
+        "index_only": "Customer",
+        "kind": "composite",
+        "name": "auto_vertex_Customer_city",
+        "property_keys": [
+          "city"
+        ],
+        "statuses": {
+          "city": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Customer",
+        "kind": "composite",
+        "name": "auto_vertex_Customer_state",
+        "property_keys": [
+          "state"
+        ],
+        "statuses": {
+          "state": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Customer",
+        "kind": "composite",
+        "name": "auto_vertex_Customer_country",
+        "property_keys": [
+          "country"
+        ],
+        "statuses": {
+          "country": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Customer",
+        "kind": "composite",
+        "name": "auto_vertex_Customer_postalCode",
+        "property_keys": [
+          "postalCode"
+        ],
+        "statuses": {
+          "postalCode": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Customer",
+        "kind": "composite",
+        "name": "auto_vertex_Customer_mobilePhone",
+        "property_keys": [
+          "mobilePhone"
+        ],
+        "statuses": {
+          "mobilePhone": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Branch",
+        "kind": "composite",
+        "name": "auto_vertex_Branch_branchCode",
+        "property_keys": [
+          "branchCode"
+        ],
+        "statuses": {
+          "branchCode": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Branch",
+        "kind": "composite",
+        "name": "auto_vertex_Branch_branchName",
+        "property_keys": [
+          "branchName"
+        ],
+        "statuses": {
+          "branchName": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Branch",
+        "kind": "composite",
+        "name": "auto_vertex_Branch_city",
+        "property_keys": [
+          "city"
+        ],
+        "statuses": {
+          "city": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Branch",
+        "kind": "composite",
+        "name": "auto_vertex_Branch_state",
+        "property_keys": [
+          "state"
+        ],
+        "statuses": {
+          "state": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Branch",
+        "kind": "composite",
+        "name": "auto_vertex_Branch_region",
+        "property_keys": [
+          "region"
+        ],
+        "statuses": {
+          "region": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Employee",
+        "kind": "composite",
+        "name": "auto_vertex_Employee_employeeName",
+        "property_keys": [
+          "employeeName"
+        ],
+        "statuses": {
+          "employeeName": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Employee",
+        "kind": "composite",
+        "name": "auto_vertex_Employee_role",
+        "property_keys": [
+          "role"
+        ],
+        "statuses": {
+          "role": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Employee",
+        "kind": "composite",
+        "name": "auto_vertex_Employee_region",
+        "property_keys": [
+          "region"
+        ],
+        "statuses": {
+          "region": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Product",
+        "kind": "composite",
+        "name": "auto_vertex_Product_productCode",
+        "property_keys": [
+          "productCode"
+        ],
+        "statuses": {
+          "productCode": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Product",
+        "kind": "composite",
+        "name": "auto_vertex_Product_productName",
+        "property_keys": [
+          "productName"
+        ],
+        "statuses": {
+          "productName": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Product",
+        "kind": "composite",
+        "name": "auto_vertex_Product_productType",
+        "property_keys": [
+          "productType"
+        ],
+        "statuses": {
+          "productType": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Product",
+        "kind": "composite",
+        "name": "auto_vertex_Product_interestRate",
+        "property_keys": [
+          "interestRate"
+        ],
+        "statuses": {
+          "interestRate": "ENABLED"
+        }
+      },
+      {
         "index_only": "Account",
         "kind": "composite",
-        "name": "accountByAccountNumber",
+        "name": "auto_vertex_Account_accountNumber",
         "property_keys": [
           "accountNumber"
         ],
@@ -1391,16 +3739,311 @@
         }
       },
       {
+        "index_only": "Account",
+        "kind": "composite",
+        "name": "auto_vertex_Account_accountType",
+        "property_keys": [
+          "accountType"
+        ],
+        "statuses": {
+          "accountType": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Account",
+        "kind": "composite",
+        "name": "auto_vertex_Account_accountStatus",
+        "property_keys": [
+          "accountStatus"
+        ],
+        "statuses": {
+          "accountStatus": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Account",
+        "kind": "composite",
+        "name": "auto_vertex_Account_openDate",
+        "property_keys": [
+          "openDate"
+        ],
+        "statuses": {
+          "openDate": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Account",
+        "kind": "composite",
+        "name": "auto_vertex_Account_currentBalance",
+        "property_keys": [
+          "currentBalance"
+        ],
+        "statuses": {
+          "currentBalance": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Account",
+        "kind": "composite",
+        "name": "auto_vertex_Account_currencyCode",
+        "property_keys": [
+          "currencyCode"
+        ],
+        "statuses": {
+          "currencyCode": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Card",
+        "kind": "composite",
+        "name": "auto_vertex_Card_cardNumberMasked",
+        "property_keys": [
+          "cardNumberMasked"
+        ],
+        "statuses": {
+          "cardNumberMasked": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Card",
+        "kind": "composite",
+        "name": "auto_vertex_Card_cardType",
+        "property_keys": [
+          "cardType"
+        ],
+        "statuses": {
+          "cardType": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Card",
+        "kind": "composite",
+        "name": "auto_vertex_Card_cardStatus",
+        "property_keys": [
+          "cardStatus"
+        ],
+        "statuses": {
+          "cardStatus": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Card",
+        "kind": "composite",
+        "name": "auto_vertex_Card_expiryDate",
+        "property_keys": [
+          "expiryDate"
+        ],
+        "statuses": {
+          "expiryDate": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Loan",
+        "kind": "composite",
+        "name": "auto_vertex_Loan_loanNumber",
+        "property_keys": [
+          "loanNumber"
+        ],
+        "statuses": {
+          "loanNumber": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Loan",
+        "kind": "composite",
+        "name": "auto_vertex_Loan_loanType",
+        "property_keys": [
+          "loanType"
+        ],
+        "statuses": {
+          "loanType": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Loan",
+        "kind": "composite",
+        "name": "auto_vertex_Loan_principalAmount",
+        "property_keys": [
+          "principalAmount"
+        ],
+        "statuses": {
+          "principalAmount": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Loan",
+        "kind": "composite",
+        "name": "auto_vertex_Loan_outstandingAmount",
+        "property_keys": [
+          "outstandingAmount"
+        ],
+        "statuses": {
+          "outstandingAmount": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Loan",
+        "kind": "composite",
+        "name": "auto_vertex_Loan_loanStatus",
+        "property_keys": [
+          "loanStatus"
+        ],
+        "statuses": {
+          "loanStatus": "ENABLED"
+        }
+      },
+      {
         "index_only": "Transaction",
         "kind": "composite",
-        "name": "transactionByCodeAndDate",
+        "name": "auto_vertex_Transaction_transactionCode",
         "property_keys": [
-          "transactionCode",
+          "transactionCode"
+        ],
+        "statuses": {
+          "transactionCode": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Transaction",
+        "kind": "composite",
+        "name": "auto_vertex_Transaction_transactionDate",
+        "property_keys": [
           "transactionDate"
         ],
         "statuses": {
-          "transactionCode": "ENABLED",
           "transactionDate": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Transaction",
+        "kind": "composite",
+        "name": "auto_vertex_Transaction_transactionAmount",
+        "property_keys": [
+          "transactionAmount"
+        ],
+        "statuses": {
+          "transactionAmount": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Transaction",
+        "kind": "composite",
+        "name": "auto_vertex_Transaction_channel",
+        "property_keys": [
+          "channel"
+        ],
+        "statuses": {
+          "channel": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Transaction",
+        "kind": "composite",
+        "name": "auto_vertex_Transaction_transactionType",
+        "property_keys": [
+          "transactionType"
+        ],
+        "statuses": {
+          "transactionType": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Transaction",
+        "kind": "composite",
+        "name": "auto_vertex_Transaction_debitCredit",
+        "property_keys": [
+          "debitCredit"
+        ],
+        "statuses": {
+          "debitCredit": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Beneficiary",
+        "kind": "composite",
+        "name": "auto_vertex_Beneficiary_beneficiaryName",
+        "property_keys": [
+          "beneficiaryName"
+        ],
+        "statuses": {
+          "beneficiaryName": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Beneficiary",
+        "kind": "composite",
+        "name": "auto_vertex_Beneficiary_bankName",
+        "property_keys": [
+          "bankName"
+        ],
+        "statuses": {
+          "bankName": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Beneficiary",
+        "kind": "composite",
+        "name": "auto_vertex_Beneficiary_beneficiaryAccount",
+        "property_keys": [
+          "beneficiaryAccount"
+        ],
+        "statuses": {
+          "beneficiaryAccount": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Alert",
+        "kind": "composite",
+        "name": "auto_vertex_Alert_alertCode",
+        "property_keys": [
+          "alertCode"
+        ],
+        "statuses": {
+          "alertCode": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Alert",
+        "kind": "composite",
+        "name": "auto_vertex_Alert_alertType",
+        "property_keys": [
+          "alertType"
+        ],
+        "statuses": {
+          "alertType": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Alert",
+        "kind": "composite",
+        "name": "auto_vertex_Alert_severity",
+        "property_keys": [
+          "severity"
+        ],
+        "statuses": {
+          "severity": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Alert",
+        "kind": "composite",
+        "name": "auto_vertex_Alert_alertStatus",
+        "property_keys": [
+          "alertStatus"
+        ],
+        "statuses": {
+          "alertStatus": "ENABLED"
+        }
+      },
+      {
+        "index_only": "Alert",
+        "kind": "composite",
+        "name": "auto_vertex_Alert_raisedAt",
+        "property_keys": [
+          "raisedAt"
+        ],
+        "statuses": {
+          "raisedAt": "ENABLED"
         }
       },
       {
@@ -1416,12 +4059,45 @@
       {
         "index_only": "ownsAccount",
         "kind": "composite",
-        "name": "ownsAccountByRelationshipType",
+        "name": "auto_edge_ownsAccount_relationshipType",
         "property_keys": [
           "relationshipType"
         ],
         "statuses": {
           "relationshipType": "ENABLED"
+        }
+      },
+      {
+        "index_only": "postedTransaction",
+        "kind": "composite",
+        "name": "auto_edge_postedTransaction_transactionDateEdge",
+        "property_keys": [
+          "transactionDateEdge"
+        ],
+        "statuses": {
+          "transactionDateEdge": "ENABLED"
+        }
+      },
+      {
+        "index_only": "postedTransaction",
+        "kind": "composite",
+        "name": "auto_edge_postedTransaction_debitCredit",
+        "property_keys": [
+          "debitCredit"
+        ],
+        "statuses": {
+          "debitCredit": "ENABLED"
+        }
+      },
+      {
+        "index_only": "postedTransaction",
+        "kind": "composite",
+        "name": "auto_edge_postedTransaction_channel",
+        "property_keys": [
+          "channel"
+        ],
+        "statuses": {
+          "channel": "ENABLED"
         }
       }
     ],
@@ -1429,20 +4105,8 @@
     "relation_index_activation_mode": "reindex",
     "relation_indexes": [
       {
-        "direction": "OUT",
-        "name": "postedTransactionsByDebitAndDate",
-        "property_keys": [
-          "debitCredit",
-          "transactionDateEdge"
-        ],
-        "relation_kind": "edge",
-        "relation_type": "postedTransaction",
-        "sort_order": "desc",
-        "status": "ENABLED"
-      },
-      {
-        "direction": "OUT",
-        "name": "ownsAccountByRelationshipTypeVc",
+        "direction": "BOTH",
+        "name": "auto_edge_rel_ownsAccount_relationshipType",
         "property_keys": [
           "relationshipType"
         ],
@@ -1452,14 +4116,58 @@
         "status": "ENABLED"
       },
       {
+        "direction": "BOTH",
+        "name": "auto_edge_rel_postedTransaction_transactionDateEdge",
+        "property_keys": [
+          "transactionDateEdge"
+        ],
+        "relation_kind": "edge",
+        "relation_type": "postedTransaction",
+        "sort_order": "desc",
+        "status": "ENABLED"
+      },
+      {
+        "direction": "BOTH",
+        "name": "auto_edge_rel_postedTransaction_debitCredit",
+        "property_keys": [
+          "debitCredit"
+        ],
+        "relation_kind": "edge",
+        "relation_type": "postedTransaction",
+        "sort_order": "asc",
+        "status": "ENABLED"
+      },
+      {
+        "direction": "BOTH",
+        "name": "auto_edge_rel_postedTransaction_channel",
+        "property_keys": [
+          "channel"
+        ],
+        "relation_kind": "edge",
+        "relation_type": "postedTransaction",
+        "sort_order": "asc",
+        "status": "ENABLED"
+      },
+      {
         "direction": "OUT",
-        "name": "balanceSnapshotByRecordedAt",
+        "name": "auto_property_rel_balanceSnapshot_balanceRecordedAt",
         "property_keys": [
           "balanceRecordedAt"
         ],
         "relation_kind": "property",
         "relation_type": "balanceSnapshot",
         "sort_order": "desc",
+        "status": "ENABLED"
+      },
+      {
+        "direction": "OUT",
+        "name": "auto_property_rel_balanceSnapshot_propertyOrigin",
+        "property_keys": [
+          "propertyOrigin"
+        ],
+        "relation_kind": "property",
+        "relation_type": "balanceSnapshot",
+        "sort_order": "asc",
         "status": "ENABLED"
       }
     ],
@@ -1644,5 +4352,5 @@
     }
   },
   "source_type": "csv",
-  "started_at": "2026-03-10T17:13:55.901969Z"
+  "started_at": "2026-03-11T04:54:44.008602Z"
 }

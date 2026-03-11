@@ -222,6 +222,159 @@ class LoaderConfigTests(unittest.TestCase):
 
             self.assertIn("cannot define meta_properties", str(ctx.exception))
 
+    def test_table_column_shorthand_infers_external_property_tables(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            ontology_path = tmp_path / "enterprise.owl"
+            ontology_path.write_text("<rdf:RDF></rdf:RDF>", encoding="utf-8")
+
+            mapping = {
+                "ontology": {"file": "./enterprise.owl"},
+                "janusgraph": {"url": "ws://localhost:8182/gremlin"},
+                "classes": [
+                    {
+                        "iri": "https://example.com/Customer",
+                        "source": {"table": "EDW.customer_dim", "key_column": "customer_id"},
+                        "properties": [
+                            {"iri": "https://example.com/customerName", "source_column": "EDW.customer_dim.customer_name"},
+                            {"iri": "https://example.com/city", "source_column": "EDW.customer_address.city"},
+                            {
+                                "iri": "https://example.com/postalCode",
+                                "source_column": "EDW.customer_address.postal_code",
+                                "entity_key_column": "EDW.customer_address.customer_id",
+                            },
+                        ],
+                    }
+                ],
+                "relationships": [],
+            }
+            mapping_path = tmp_path / "mapping.json"
+            mapping_path.write_text(json.dumps(mapping), encoding="utf-8")
+
+            config = kg_loader.LoaderConfig.from_file(str(mapping_path))
+
+            name_prop, city_prop, postal_prop = config.classes[0].properties
+            self.assertEqual(name_prop.source_column, "customer_name")
+            self.assertIsNone(name_prop.source_table)
+            self.assertEqual(city_prop.source_column, "city")
+            self.assertEqual(city_prop.source_table, "EDW.customer_address")
+            self.assertEqual(postal_prop.entity_key_column, "customer_id")
+            self.assertEqual(postal_prop.source_table, "EDW.customer_address")
+
+    def test_table_comma_column_shorthand_is_supported_for_properties(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            ontology_path = tmp_path / "enterprise.owl"
+            ontology_path.write_text("<rdf:RDF></rdf:RDF>", encoding="utf-8")
+
+            mapping = {
+                "ontology": {"file": "./enterprise.owl"},
+                "janusgraph": {"url": "ws://localhost:8182/gremlin"},
+                "classes": [
+                    {
+                        "iri": "https://example.com/Customer",
+                        "source": {"table": "EDW.customer_dim", "key_column": "customer_id"},
+                        "properties": [
+                            {"iri": "https://example.com/customerName", "source_column": "EDW.customer_dim,customer_name"},
+                            {"iri": "https://example.com/city", "source_column": "EDW.customer_address,city"},
+                            {
+                                "iri": "https://example.com/postalCode",
+                                "source_column": "EDW.customer_address,postal_code",
+                                "entity_key_column": "EDW.customer_address,customer_id",
+                            },
+                        ],
+                    }
+                ],
+                "relationships": [],
+            }
+            mapping_path = tmp_path / "mapping.json"
+            mapping_path.write_text(json.dumps(mapping), encoding="utf-8")
+
+            config = kg_loader.LoaderConfig.from_file(str(mapping_path))
+
+            name_prop, city_prop, postal_prop = config.classes[0].properties
+            self.assertEqual(name_prop.source_column, "customer_name")
+            self.assertIsNone(name_prop.source_table)
+            self.assertEqual(city_prop.source_column, "city")
+            self.assertEqual(city_prop.source_table, "EDW.customer_address")
+            self.assertEqual(postal_prop.entity_key_column, "customer_id")
+            self.assertEqual(postal_prop.source_table, "EDW.customer_address")
+
+    def test_table_column_shorthand_can_infer_relationship_source_table(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            ontology_path = tmp_path / "enterprise.owl"
+            ontology_path.write_text("<rdf:RDF></rdf:RDF>", encoding="utf-8")
+
+            mapping = {
+                "ontology": {"file": "./enterprise.owl"},
+                "janusgraph": {"url": "ws://localhost:8182/gremlin"},
+                "classes": [
+                    {"iri": "https://example.com/Customer", "source": {"table": "customer_dim", "key_column": "customer_id"}},
+                    {"iri": "https://example.com/Account", "source": {"table": "account_dim", "key_column": "account_id"}},
+                ],
+                "relationships": [
+                    {
+                        "iri": "https://example.com/ownsAccount",
+                        "source_class_iri": "https://example.com/Customer",
+                        "target_class_iri": "https://example.com/Account",
+                        "source": {
+                            "from_column": "EDW.account_customer_bridge.customer_id",
+                            "to_column": "EDW.account_customer_bridge.account_id",
+                        },
+                        "properties": [
+                            {
+                                "iri": "https://example.com/relationshipType",
+                                "source_column": "EDW.account_customer_bridge.relationship_type",
+                            }
+                        ],
+                    }
+                ],
+            }
+            mapping_path = tmp_path / "mapping.json"
+            mapping_path.write_text(json.dumps(mapping), encoding="utf-8")
+
+            config = kg_loader.LoaderConfig.from_file(str(mapping_path))
+
+            relationship = config.relationships[0]
+            self.assertEqual(relationship.source.table, "EDW.account_customer_bridge")
+            self.assertEqual(relationship.source.from_column, "customer_id")
+            self.assertEqual(relationship.source.to_column, "account_id")
+            self.assertEqual(relationship.properties[0].source_column, "relationship_type")
+
+    def test_validation_rejects_relationship_shortcuts_spanning_multiple_tables(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            ontology_path = tmp_path / "enterprise.owl"
+            ontology_path.write_text("<rdf:RDF></rdf:RDF>", encoding="utf-8")
+
+            mapping = {
+                "ontology": {"file": "./enterprise.owl"},
+                "janusgraph": {"url": "ws://localhost:8182/gremlin"},
+                "classes": [
+                    {"iri": "https://example.com/Customer", "source": {"table": "customer_dim", "key_column": "customer_id"}},
+                    {"iri": "https://example.com/Account", "source": {"table": "account_dim", "key_column": "account_id"}},
+                ],
+                "relationships": [
+                    {
+                        "iri": "https://example.com/ownsAccount",
+                        "source_class_iri": "https://example.com/Customer",
+                        "target_class_iri": "https://example.com/Account",
+                        "source": {
+                            "from_column": "EDW.customer_dim.customer_id",
+                            "to_column": "EDW.account_dim.account_id",
+                        },
+                    }
+                ],
+            }
+            mapping_path = tmp_path / "mapping.json"
+            mapping_path.write_text(json.dumps(mapping), encoding="utf-8")
+
+            with self.assertRaises(ValueError) as ctx:
+                kg_loader.LoaderConfig.from_file(str(mapping_path))
+
+            self.assertIn("Use custom SQL", str(ctx.exception))
+
 
 class QueryBuilderTests(unittest.TestCase):
     def test_build_relationship_sql_aliases_foreign_keys(self) -> None:
@@ -556,6 +709,101 @@ class RecommendationTests(unittest.TestCase):
             self.assertEqual(by_name["Customer_Name_Search"].status, "recommended")
             self.assertEqual(by_name["Customer_Name_Search"].details["kind"], "mixed")
 
+    def test_auto_indexes_recommendations_and_multiplicity_inference_work_without_manual_sections(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            ontology_path = tmp_path / "enterprise.owl"
+            ontology_path.write_text("<rdf:RDF></rdf:RDF>", encoding="utf-8")
+
+            config = kg_loader.LoaderConfig(
+                ontology=kg_loader.OntologyDefinition(file=str(ontology_path), include_unmapped_terms=False),
+                janusgraph=kg_loader.JanusGraphSettings(url="ws://localhost:8182/gremlin"),
+                runtime=kg_loader.RuntimeSettings(),
+                ingestion=kg_loader.IngestionSettings(mode="test", source_type="csv", csv_root_dir=str(tmp_path)),
+                classes=[
+                    kg_loader.ClassMapping(
+                        iri="https://example.com/Customer",
+                        source=kg_loader.SourceSpec(table="customer_dim", key_column="customer_id"),
+                        properties=[
+                            kg_loader.PropertyMapping(
+                                iri="https://example.com/email",
+                                source_column="email",
+                                data_type="String",
+                            )
+                        ],
+                    ),
+                    kg_loader.ClassMapping(
+                        iri="https://example.com/Account",
+                        source=kg_loader.SourceSpec(table="account_dim", key_column="account_id"),
+                        properties=[
+                            kg_loader.PropertyMapping(
+                                iri="https://example.com/currentBalance",
+                                property_key="balanceSnapshot",
+                                source_column="current_balance",
+                                data_type="Decimal",
+                                cardinality="LIST",
+                                meta_properties=[
+                                    kg_loader.MetaPropertyMapping(
+                                        property_key="balanceRecordedAt",
+                                        source_column="open_date",
+                                        data_type="Date",
+                                    )
+                                ],
+                            )
+                        ],
+                    ),
+                    kg_loader.ClassMapping(
+                        iri="https://example.com/Transaction",
+                        source=kg_loader.SourceSpec(table="transaction_fact", key_column="transaction_id"),
+                    ),
+                ],
+                relationships=[
+                    kg_loader.RelationshipMapping(
+                        iri="https://example.com/postedTransaction",
+                        source_class_iri="https://example.com/Account",
+                        target_class_iri="https://example.com/Transaction",
+                        source=kg_loader.SourceSpec(
+                            table="transaction_fact",
+                            from_column="account_id",
+                            to_column="transaction_id",
+                        ),
+                        properties=[
+                            kg_loader.PropertyMapping(
+                                iri="https://example.com/transactionDate",
+                                property_key="transactionDateEdge",
+                                source_column="transaction_date",
+                                data_type="Date",
+                            )
+                        ],
+                    )
+                ],
+                mapping_file="memory",
+            )
+
+            ontology = kg_loader.OntologyCatalog(
+                classes={},
+                properties={
+                    "https://example.com/postedTransaction": kg_loader.OntologyProperty(
+                        iri="https://example.com/postedTransaction",
+                        kind="object",
+                        characteristics={"inverse_functional"},
+                    )
+                },
+            )
+
+            schema_plan = kg_loader.SchemaPlanner(config, ontology).build()
+            self.assertIn("auto_vertex_Customer_email", schema_plan.vertex_indexes)
+            self.assertIn("auto_edge_postedTransaction_transactionDateEdge", schema_plan.edge_indexes)
+            self.assertIn("auto_edge_rel_postedTransaction_transactionDateEdge", schema_plan.edge_relation_indexes)
+            self.assertIn("auto_property_rel_balanceSnapshot_balanceRecordedAt", schema_plan.property_relation_indexes)
+            self.assertEqual(schema_plan.edge_labels["postedTransaction"].multiplicity, "ONE2MANY")
+
+            recommendations = kg_loader.recommend_query_pattern_indexes(config, schema_plan)
+            by_name = {item.name: item for item in recommendations}
+            self.assertEqual(by_name["Customer_email_Exact_Lookup"].status, "satisfied")
+            self.assertEqual(by_name["postedTransaction_transactionDateEdge_Incident_Traversal"].status, "satisfied")
+            self.assertEqual(by_name["balanceSnapshot_balanceRecordedAt_Meta_Traversal"].status, "satisfied")
+
 
 class ScriptUtilityTests(unittest.TestCase):
     def test_management_script_uses_requested_graph_alias(self) -> None:
@@ -613,6 +861,44 @@ class CsvClientTests(unittest.TestCase):
             self.assertEqual(batches[0][0]["customer_id"], "C001")
             self.assertEqual(batches[0][0]["account_id"], "A100")
             self.assertEqual(batches[0][0]["relationship_type"], "PRIMARY")
+
+
+class DeduplicationTests(unittest.TestCase):
+    def test_vertex_payload_rows_are_merged_by_external_id(self) -> None:
+        rows = [
+            {
+                "external_id": "Customer:C001",
+                "properties": [{"key": "customerName", "value": "Alice"}],
+            },
+            {
+                "external_id": "Customer:C001",
+                "properties": [{"key": "email", "value": "alice@example.com"}],
+            },
+        ]
+
+        merged = kg_loader.deduplicate_payload_rows(rows, "external_id")
+
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(merged[0]["external_id"], "Customer:C001")
+        self.assertEqual([item["key"] for item in merged[0]["properties"]], ["customerName", "email"])
+
+    def test_edge_payload_rows_are_merged_by_edge_external_id(self) -> None:
+        rows = [
+            {
+                "edge_external_id": "ownsAccount:C001:A100",
+                "properties": [{"key": "relationshipType", "value": "PRIMARY"}],
+            },
+            {
+                "edge_external_id": "ownsAccount:C001:A100",
+                "properties": [{"key": "channel", "value": "ONLINE"}],
+            },
+        ]
+
+        merged = kg_loader.deduplicate_payload_rows(rows, "edge_external_id")
+
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(merged[0]["edge_external_id"], "ownsAccount:C001:A100")
+        self.assertEqual([item["key"] for item in merged[0]["properties"]], ["relationshipType", "channel"])
 
 
 class OntologyReasoningTests(unittest.TestCase):

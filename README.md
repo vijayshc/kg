@@ -78,10 +78,8 @@ The mapping file supports:
   - `csv_root_dir` / delimiter / encoding for local CSV mode
 - `classes[]`
   - ontology class IRI
-  - JanusGraph vertex label
   - source table or SQL
   - business key column
-  - optional `id_template`
   - attribute/property mappings
   - optional vertex-property `meta_properties`
 - `relationships[]`
@@ -90,19 +88,46 @@ The mapping file supports:
   - target class IRI
   - relationship table or SQL
   - source/target foreign key columns
-  - optional `id_template`
   - edge property mappings
 - `indexes[]`
-  - graph-global composite or mixed indexes
+  - optional graph-global composite or mixed indexes for custom/manual tuning
   - optional advanced mixed-index key tuning via `keys[]` (`mapping`, analyzers, mapped field names, custom parameters)
 - `vertex_centric_indexes.edge_indexes[]`
-  - JanusGraph edge relation indexes for hot high-degree traversals
+  - optional JanusGraph edge relation indexes for custom/manual tuning
 - `vertex_centric_indexes.property_indexes[]`
-  - JanusGraph property relation indexes for vertex-property meta-properties
+  - optional JanusGraph property relation indexes for custom/manual tuning
 - `query_patterns[]`
-  - declarative hot-path descriptions used to recommend missing graph or relation indexes
+  - optional declarative hot-path descriptions used to recommend custom graph or relation indexes
 
-For external attribute tables, set `source_table` and `entity_key_column` on the property mapping.
+The loader now infers many fields automatically when you omit them:
+
+- `vertex_label` from the class IRI local name
+- `edge_label` from the relationship IRI local name
+- `property_key` from the property IRI local name
+- `id_template` from the resolved label plus the source key columns
+- `multiplicity` from ontology functional / inverse-functional characteristics when available
+- `data_type` from ontology ranges when available
+- fetch size from global runtime defaults
+
+If you omit `indexes`, `vertex_centric_indexes`, or `query_patterns`, the loader now auto-generates safe defaults:
+
+- label-scoped composite graph indexes for mapped vertex and edge properties
+- vertex-centric edge relation indexes for edge properties with order-preserving types
+- property relation indexes for multi-valued vertex properties that carry meta-properties
+- default recommendation entries in the load report based on those inferred access patterns
+
+For property sources, the preferred compact form is now `table,column` in `source_column`.
+
+Example:
+
+- `customer_address,city` infers `source_table=customer_address` and `source_column=city`
+- `EDW.customer_address,city` does the same for schema-qualified tables
+
+The loader still accepts dotted `table.column` references too, but the YAML templates now use the pair-style form for property sources and dotted qualified references for relationship `from_column` / `to_column`.
+
+If the external table uses the same entity key column name as the base class table, no extra config is needed. If it uses a different key column, set `entity_key_column` explicitly.
+
+For relationships, the loader expects a single source rowset that contains both the source and target foreign keys. The templates now express that as dotted qualified keys like `EDW.account_customer_bridge.customer_id` and `EDW.account_customer_bridge.account_id`. If a relationship must be assembled from multiple physical tables, use `source.sql` instead of trying to declare separate `from` and `to` tables.
 
 The mapping file is treated as **trusted administrative input**. To reduce surprises, the loader rejects multi-statement SQL, SQL comments, and unsafe statement separators in generated fragments and custom `source.sql` blocks.
 
@@ -200,13 +225,14 @@ Within each JanusGraph write batch, repeated vertex IDs or edge IDs are merged b
 
 ### Index strategy
 
-The loader now supports configurable graph-global indexes through `indexes:` and JanusGraph vertex-centric relation indexes through `vertex_centric_indexes:`.
+The loader now auto-creates sensible default graph-global and vertex-centric relation indexes when the explicit index sections are omitted.
 
 - **Composite graph indexes** are best for exact-match entry points like `accountNumber`, `email`, or `edge_external_id`.
 - **Mixed graph indexes** are supported for text/range/geo workloads and advanced field mapping, but require a JanusGraph search backend such as Elasticsearch, Solr, or Lucene to be configured on the server.
 - **Edge relation indexes** are designed for traversals that start from a high-degree vertex and then filter/order on edge properties.
 - **Property relation indexes** are designed for traversing vertex properties by their meta-properties.
 - **Query-pattern recommendations** are emitted in the load report so observed hot paths can be turned into concrete graph or relation index specs.
+- Explicit `indexes:` / `vertex_centric_indexes:` sections are still supported for mixed indexes, multi-property indexes, or other special-case tuning.
 - When the loader creates new indexes against an existing graph, it can automatically **reindex** them so previously loaded data becomes queryable through those indexes.
 
 For a new graph, the recommended order is still delightfully boring:

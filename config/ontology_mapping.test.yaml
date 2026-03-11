@@ -1,568 +1,273 @@
 ontology:
   file: ../ontology/banking.ttl
-  format: turtle
   include_unmapped_terms: false
 
 janusgraph:
   url: ${JANUSGRAPH_URL:-ws://127.0.0.1:8182/gremlin}
-  traversal_source: ${JANUSGRAPH_TRAVERSAL_SOURCE:-g}
-  graph_alias: ${JANUSGRAPH_GRAPH_ALIAS:-graph}
-  create_schema: true
-  create_schema_constraints: true
-  request_timeout_seconds: ${JANUSGRAPH_REQUEST_TIMEOUT_SECONDS:-300}
-  index_activation_mode: ${JANUSGRAPH_INDEX_ACTIVATION_MODE:-reindex}
-  index_reindex_concurrency: ${JANUSGRAPH_INDEX_REINDEX_CONCURRENCY:-0}
-  relation_index_activation_mode: ${JANUSGRAPH_RELATION_INDEX_ACTIVATION_MODE:-reindex}
-  relation_index_reindex_concurrency: ${JANUSGRAPH_RELATION_INDEX_REINDEX_CONCURRENCY:-0}
-  emit_query_pattern_recommendations: true
 
 runtime:
   batch_size: 100
-  dry_run: false
-  strict_ontology: true
   fail_on_missing_vertex: true
 
 ingestion:
   mode: test
   source_type: csv
   csv_root_dir: ../data/banking_csv
-  csv_delimiter: ","
-  csv_encoding: utf-8
-
-indexes:
-  - name: customerByEmail
-    element: vertex
-    kind: composite
-    property_keys: [email]
-    index_only: Customer
-  - name: accountByAccountNumber
-    element: vertex
-    kind: composite
-    property_keys: [accountNumber]
-    unique: true
-    index_only: Account
-  - name: transactionByCodeAndDate
-    element: vertex
-    kind: composite
-    property_keys: [transactionCode, transactionDate]
-    index_only: Transaction
-  - name: ownsAccountByRelationshipType
-    element: edge
-    kind: composite
-    property_keys: [relationshipType]
-    index_only: ownsAccount
-
-vertex_centric_indexes:
-  edge_indexes:
-    - name: postedTransactionsByDebitAndDate
-      edge_label: postedTransaction
-      direction: OUT
-      sort_order: desc
-      property_keys: [debitCredit, transactionDateEdge]
-    - name: ownsAccountByRelationshipTypeVc
-      edge_label: ownsAccount
-      direction: OUT
-      sort_order: asc
-      property_keys: [relationshipType]
-  property_indexes:
-    - name: balanceSnapshotByRecordedAt
-      property_key: balanceSnapshot
-      sort_order: desc
-      meta_property_keys: [balanceRecordedAt]
-
-query_patterns:
-  - name: Customer Email Lookup
-    type: graph
-    element: vertex
-    label: Customer
-    predicates:
-      - property_key: email
-        operator: eq
-  - name: Customer Name Search
-    type: graph
-    element: vertex
-    label: Customer
-    predicates:
-      - property_key: customerName
-        operator: textContains
-  - name: Recent Debit Transactions By Account
-    type: traversal
-    start_label: Account
-    edge_label: postedTransaction
-    direction: OUT
-    predicates:
-      - property_key: debitCredit
-        operator: eq
-      - property_key: transactionDateEdge
-        operator: range
-    order_by: transactionDateEdge
-    order: desc
-    limit: 10
-  - name: Current Balance By Recorded At
-    type: property_meta
-    property_key: balanceSnapshot
-    predicates:
-      - property_key: balanceRecordedAt
-        operator: range
-    order_by: balanceRecordedAt
-    order: desc
 
 classes:
   - iri: https://example.com/ontology/bank#Customer
-    vertex_label: Customer
-    id_template: Customer:{customer_id}
     source:
       table: customer_dim
       key_column: customer_id
-      fetch_size: 100
     properties:
       - iri: https://example.com/ontology/bank#customerName
-        property_key: customerName
-        source_column: customer_name
-        data_type: String
+        source_column: customer_dim.customer_name
       - iri: https://example.com/ontology/bank#dateOfBirth
-        property_key: dateOfBirth
-        source_column: date_of_birth
-        data_type: Date
+        source_column: customer_dim.date_of_birth
       - iri: https://example.com/ontology/bank#customerSegment
-        property_key: customerSegment
-        source_column: customer_segment
-        data_type: String
+        source_column: customer_dim.customer_segment
       - iri: https://example.com/ontology/bank#riskRating
-        property_key: riskRating
-        source_column: risk_rating
-        data_type: String
+        source_column: customer_dim.risk_rating
       - iri: https://example.com/ontology/bank#kycStatus
-        property_key: kycStatus
-        source_column: kyc_status
-        data_type: String
+        source_column: customer_dim.kyc_status
       - iri: https://example.com/ontology/bank#email
-        property_key: email
-        source_column: email
-        data_type: String
+        source_column: customer_dim.email
       - iri: https://example.com/ontology/bank#city
-        property_key: city
-        source_column: city
-        source_table: customer_address
-        entity_key_column: customer_id
-        data_type: String
+        source_column: customer_address.city
       - iri: https://example.com/ontology/bank#state
-        property_key: state
-        source_column: state
-        source_table: customer_address
-        entity_key_column: customer_id
-        data_type: String
+        source_column: customer_address.state
       - iri: https://example.com/ontology/bank#country
-        property_key: country
-        source_column: country
-        source_table: customer_address
-        entity_key_column: customer_id
-        data_type: String
+        source_column: customer_address.country
       - iri: https://example.com/ontology/bank#postalCode
-        property_key: postalCode
-        source_column: postal_code
-        source_table: customer_address
-        entity_key_column: customer_id
-        data_type: String
+        source_column: customer_address.postal_code
       - iri: https://example.com/ontology/bank#mobilePhone
-        property_key: mobilePhone
-        source_column: mobile_phone
-        source_table: customer_phone
-        entity_key_column: customer_id
-        data_type: String
+        source_column: customer_phone.mobile_phone
 
   - iri: https://example.com/ontology/bank#Branch
-    vertex_label: Branch
-    id_template: Branch:{branch_id}
     source:
       table: branch_dim
       key_column: branch_id
-      fetch_size: 100
     properties:
       - iri: https://example.com/ontology/bank#branchCode
-        property_key: branchCode
-        source_column: branch_code
-        data_type: String
+        source_column: branch_dim.branch_code
       - iri: https://example.com/ontology/bank#branchName
-        property_key: branchName
-        source_column: branch_name
-        data_type: String
+        source_column: branch_dim.branch_name
       - iri: https://example.com/ontology/bank#city
-        property_key: city
-        source_column: city
-        data_type: String
+        source_column: branch_dim.city
       - iri: https://example.com/ontology/bank#state
-        property_key: state
-        source_column: state
-        data_type: String
+        source_column: branch_dim.state
       - iri: https://example.com/ontology/bank#region
-        property_key: region
-        source_column: region
-        data_type: String
+        source_column: branch_dim.region
 
   - iri: https://example.com/ontology/bank#Employee
-    vertex_label: Employee
-    id_template: Employee:{employee_id}
     source:
       table: employee_dim
       key_column: employee_id
-      fetch_size: 100
     properties:
       - iri: https://example.com/ontology/bank#employeeName
-        property_key: employeeName
-        source_column: employee_name
-        data_type: String
+        source_column: employee_dim.employee_name
       - iri: https://example.com/ontology/bank#role
-        property_key: role
-        source_column: role
-        data_type: String
+        source_column: employee_dim.role
       - iri: https://example.com/ontology/bank#region
-        property_key: region
-        source_column: region
-        data_type: String
+        source_column: employee_dim.region
 
   - iri: https://example.com/ontology/bank#Product
-    vertex_label: Product
-    id_template: Product:{product_id}
     source:
       table: product_dim
       key_column: product_id
-      fetch_size: 100
     properties:
       - iri: https://example.com/ontology/bank#productCode
-        property_key: productCode
-        source_column: product_code
-        data_type: String
+        source_column: product_dim.product_code
       - iri: https://example.com/ontology/bank#productName
-        property_key: productName
-        source_column: product_name
-        data_type: String
+        source_column: product_dim.product_name
       - iri: https://example.com/ontology/bank#productType
-        property_key: productType
-        source_column: product_type
-        data_type: String
+        source_column: product_dim.product_type
       - iri: https://example.com/ontology/bank#interestRate
-        property_key: interestRate
-        source_column: interest_rate
-        data_type: Decimal
+        source_column: product_dim.interest_rate
 
   - iri: https://example.com/ontology/bank#Account
-    vertex_label: Account
-    id_template: Account:{account_id}
     source:
       table: account_dim
       key_column: account_id
-      fetch_size: 100
     properties:
       - iri: https://example.com/ontology/bank#accountNumber
-        property_key: accountNumber
-        source_column: account_number
-        data_type: String
+        source_column: account_dim.account_number
       - iri: https://example.com/ontology/bank#accountType
-        property_key: accountType
-        source_column: account_type
-        data_type: String
+        source_column: account_dim.account_type
       - iri: https://example.com/ontology/bank#accountStatus
-        property_key: accountStatus
-        source_column: account_status
-        data_type: String
+        source_column: account_dim.account_status
       - iri: https://example.com/ontology/bank#openDate
-        property_key: openDate
-        source_column: open_date
-        data_type: Date
+        source_column: account_dim.open_date
       - iri: https://example.com/ontology/bank#currentBalance
-        property_key: currentBalance
-        source_column: current_balance
-        data_type: Decimal
+        source_column: account_dim.current_balance
       - iri: https://example.com/ontology/bank#currentBalance
         property_key: balanceSnapshot
-        source_column: current_balance
-        data_type: Decimal
+        source_column: account_dim.current_balance
         cardinality: LIST
         meta_properties:
           - property_key: balanceRecordedAt
-            source_column: open_date
+            source_column: account_dim.open_date
             data_type: Date
           - property_key: propertyOrigin
             constant_value: account_dim.current_balance
-            data_type: String
       - iri: https://example.com/ontology/bank#currencyCode
-        property_key: currencyCode
-        source_column: currency_code
-        data_type: String
+        source_column: account_dim.currency_code
 
   - iri: https://example.com/ontology/bank#Card
-    vertex_label: Card
-    id_template: Card:{card_id}
     source:
       table: card_dim
       key_column: card_id
-      fetch_size: 100
     properties:
       - iri: https://example.com/ontology/bank#cardNumberMasked
-        property_key: cardNumberMasked
-        source_column: card_number_masked
-        data_type: String
+        source_column: card_dim.card_number_masked
       - iri: https://example.com/ontology/bank#cardType
-        property_key: cardType
-        source_column: card_type
-        data_type: String
+        source_column: card_dim.card_type
       - iri: https://example.com/ontology/bank#cardStatus
-        property_key: cardStatus
-        source_column: card_status
-        data_type: String
+        source_column: card_dim.card_status
       - iri: https://example.com/ontology/bank#expiryDate
-        property_key: expiryDate
-        source_column: expiry_date
-        data_type: Date
+        source_column: card_dim.expiry_date
 
   - iri: https://example.com/ontology/bank#Loan
-    vertex_label: Loan
-    id_template: Loan:{loan_id}
     source:
       table: loan_dim
       key_column: loan_id
-      fetch_size: 100
     properties:
       - iri: https://example.com/ontology/bank#loanNumber
-        property_key: loanNumber
-        source_column: loan_number
-        data_type: String
+        source_column: loan_dim.loan_number
       - iri: https://example.com/ontology/bank#loanType
-        property_key: loanType
-        source_column: loan_type
-        data_type: String
+        source_column: loan_dim.loan_type
       - iri: https://example.com/ontology/bank#principalAmount
-        property_key: principalAmount
-        source_column: principal_amount
-        data_type: Decimal
+        source_column: loan_dim.principal_amount
       - iri: https://example.com/ontology/bank#outstandingAmount
-        property_key: outstandingAmount
-        source_column: outstanding_amount
-        data_type: Decimal
+        source_column: loan_dim.outstanding_amount
       - iri: https://example.com/ontology/bank#loanStatus
-        property_key: loanStatus
-        source_column: loan_status
-        data_type: String
+        source_column: loan_dim.loan_status
 
   - iri: https://example.com/ontology/bank#Transaction
-    vertex_label: Transaction
-    id_template: Transaction:{transaction_id}
     source:
       table: transaction_fact
       key_column: transaction_id
-      fetch_size: 100
     properties:
       - iri: https://example.com/ontology/bank#transactionCode
-        property_key: transactionCode
-        source_column: transaction_code
-        data_type: String
+        source_column: transaction_fact.transaction_code
       - iri: https://example.com/ontology/bank#transactionDate
-        property_key: transactionDate
-        source_column: transaction_date
-        data_type: Instant
+        source_column: transaction_fact.transaction_date
       - iri: https://example.com/ontology/bank#transactionAmount
-        property_key: transactionAmount
-        source_column: transaction_amount
-        data_type: Decimal
+        source_column: transaction_fact.transaction_amount
       - iri: https://example.com/ontology/bank#channel
-        property_key: channel
-        source_column: channel
-        data_type: String
+        source_column: transaction_fact.channel
       - iri: https://example.com/ontology/bank#transactionType
-        property_key: transactionType
-        source_column: transaction_type
-        data_type: String
+        source_column: transaction_fact.transaction_type
       - iri: https://example.com/ontology/bank#debitCredit
-        property_key: debitCredit
-        source_column: debit_credit
-        data_type: String
+        source_column: transaction_fact.debit_credit
 
   - iri: https://example.com/ontology/bank#Beneficiary
-    vertex_label: Beneficiary
-    id_template: Beneficiary:{beneficiary_id}
     source:
       table: beneficiary
       key_column: beneficiary_id
-      fetch_size: 100
     properties:
       - iri: https://example.com/ontology/bank#beneficiaryName
-        property_key: beneficiaryName
-        source_column: beneficiary_name
-        data_type: String
+        source_column: beneficiary.beneficiary_name
       - iri: https://example.com/ontology/bank#bankName
-        property_key: bankName
-        source_column: bank_name
-        data_type: String
+        source_column: beneficiary.bank_name
       - iri: https://example.com/ontology/bank#beneficiaryAccount
-        property_key: beneficiaryAccount
-        source_column: beneficiary_account
-        data_type: String
+        source_column: beneficiary.beneficiary_account
 
   - iri: https://example.com/ontology/bank#Alert
-    vertex_label: Alert
-    id_template: Alert:{alert_id}
     source:
       table: alert_fact
       key_column: alert_id
-      fetch_size: 100
     properties:
       - iri: https://example.com/ontology/bank#alertCode
-        property_key: alertCode
-        source_column: alert_code
-        data_type: String
+        source_column: alert_fact.alert_code
       - iri: https://example.com/ontology/bank#alertType
-        property_key: alertType
-        source_column: alert_type
-        data_type: String
+        source_column: alert_fact.alert_type
       - iri: https://example.com/ontology/bank#severity
-        property_key: severity
-        source_column: severity
-        data_type: String
+        source_column: alert_fact.severity
       - iri: https://example.com/ontology/bank#alertStatus
-        property_key: alertStatus
-        source_column: alert_status
-        data_type: String
+        source_column: alert_fact.alert_status
       - iri: https://example.com/ontology/bank#raisedAt
-        property_key: raisedAt
-        source_column: raised_at
-        data_type: Instant
+        source_column: alert_fact.raised_at
 
 relationships:
   - iri: https://example.com/ontology/bank#ownsAccount
-    edge_label: ownsAccount
     source_class_iri: https://example.com/ontology/bank#Customer
     target_class_iri: https://example.com/ontology/bank#Account
-    id_template: ownsAccount:{customer_id}:{account_id}
-    multiplicity: MULTI
     source:
-      table: account_customer_bridge
-      from_column: customer_id
-      to_column: account_id
-      fetch_size: 100
+      from_column: account_customer_bridge.customer_id
+      to_column: account_customer_bridge.account_id
     properties:
       - iri: https://example.com/ontology/bank#relationshipType
-        property_key: relationshipType
-        source_column: relationship_type
-        data_type: String
+        source_column: account_customer_bridge.relationship_type
 
   - iri: https://example.com/ontology/bank#issuedByBranch
-    edge_label: issuedByBranch
     source_class_iri: https://example.com/ontology/bank#Account
     target_class_iri: https://example.com/ontology/bank#Branch
-    id_template: issuedByBranch:{account_id}:{branch_id}
-    multiplicity: MANY2ONE
     source:
-      table: account_dim
-      from_column: account_id
-      to_column: branch_id
-      fetch_size: 100
+      from_column: account_dim.account_id
+      to_column: account_dim.branch_id
 
   - iri: https://example.com/ontology/bank#managedByEmployee
-    edge_label: managedByEmployee
     source_class_iri: https://example.com/ontology/bank#Account
     target_class_iri: https://example.com/ontology/bank#Employee
-    id_template: managedByEmployee:{account_id}:{employee_id}
-    multiplicity: MANY2ONE
     source:
-      table: account_dim
-      from_column: account_id
-      to_column: relationship_manager_id
-      fetch_size: 100
+      from_column: account_dim.account_id
+      to_column: account_dim.relationship_manager_id
 
   - iri: https://example.com/ontology/bank#belongsToProduct
-    edge_label: belongsToProduct
     source_class_iri: https://example.com/ontology/bank#Account
     target_class_iri: https://example.com/ontology/bank#Product
-    id_template: belongsToProduct:{account_id}:{product_id}
-    multiplicity: MANY2ONE
     source:
-      table: account_dim
-      from_column: account_id
-      to_column: product_id
-      fetch_size: 100
+      from_column: account_dim.account_id
+      to_column: account_dim.product_id
 
   - iri: https://example.com/ontology/bank#worksAtBranch
-    edge_label: worksAtBranch
     source_class_iri: https://example.com/ontology/bank#Employee
     target_class_iri: https://example.com/ontology/bank#Branch
-    id_template: worksAtBranch:{employee_id}:{branch_id}
-    multiplicity: MANY2ONE
     source:
-      table: employee_dim
-      from_column: employee_id
-      to_column: branch_id
-      fetch_size: 100
+      from_column: employee_dim.employee_id
+      to_column: employee_dim.branch_id
 
   - iri: https://example.com/ontology/bank#hasCard
-    edge_label: hasCard
     source_class_iri: https://example.com/ontology/bank#Account
     target_class_iri: https://example.com/ontology/bank#Card
-    id_template: hasCard:{account_id}:{card_id}
-    multiplicity: ONE2MANY
     source:
-      table: card_dim
-      from_column: account_id
-      to_column: card_id
-      fetch_size: 100
+      from_column: card_dim.account_id
+      to_column: card_dim.card_id
 
   - iri: https://example.com/ontology/bank#hasLoan
-    edge_label: hasLoan
     source_class_iri: https://example.com/ontology/bank#Customer
     target_class_iri: https://example.com/ontology/bank#Loan
-    id_template: hasLoan:{customer_id}:{loan_id}
-    multiplicity: ONE2MANY
     source:
-      table: loan_dim
-      from_column: customer_id
-      to_column: loan_id
-      fetch_size: 100
+      from_column: loan_dim.customer_id
+      to_column: loan_dim.loan_id
 
   - iri: https://example.com/ontology/bank#postedTransaction
-    edge_label: postedTransaction
     source_class_iri: https://example.com/ontology/bank#Account
     target_class_iri: https://example.com/ontology/bank#Transaction
-    id_template: postedTransaction:{account_id}:{transaction_id}
-    multiplicity: ONE2MANY
     source:
-      table: transaction_fact
-      from_column: account_id
-      to_column: transaction_id
-      fetch_size: 100
+      from_column: transaction_fact.account_id
+      to_column: transaction_fact.transaction_id
     properties:
       - iri: https://example.com/ontology/bank#transactionDate
         property_key: transactionDateEdge
-        source_column: transaction_date
+        source_column: transaction_fact.transaction_date
         data_type: Date
       - iri: https://example.com/ontology/bank#debitCredit
-        property_key: debitCredit
-        source_column: debit_credit
-        data_type: String
+        source_column: transaction_fact.debit_credit
       - iri: https://example.com/ontology/bank#channel
-        property_key: channel
-        source_column: channel
-        data_type: String
+        source_column: transaction_fact.channel
 
   - iri: https://example.com/ontology/bank#beneficiaryForAccount
-    edge_label: beneficiaryForAccount
     source_class_iri: https://example.com/ontology/bank#Account
     target_class_iri: https://example.com/ontology/bank#Beneficiary
-    id_template: beneficiaryForAccount:{account_id}:{beneficiary_id}
-    multiplicity: ONE2MANY
     source:
-      table: beneficiary
-      from_column: account_id
-      to_column: beneficiary_id
-      fetch_size: 100
+      from_column: beneficiary.account_id
+      to_column: beneficiary.beneficiary_id
 
   - iri: https://example.com/ontology/bank#hasAlert
-    edge_label: hasAlert
     source_class_iri: https://example.com/ontology/bank#Account
     target_class_iri: https://example.com/ontology/bank#Alert
-    id_template: hasAlert:{account_id}:{alert_id}
-    multiplicity: ONE2MANY
     source:
-      table: alert_fact
-      from_column: account_id
-      to_column: alert_id
-      fetch_size: 100
+      from_column: alert_fact.account_id
+      to_column: alert_fact.alert_id

@@ -92,6 +92,26 @@ def validate_sql_statement(statement: str, context: str) -> None:
         raise ValueError(f"{context} must be a single SELECT or WITH statement")
 
 
+def split_qualified_identifier(value: Optional[str]) -> Tuple[Optional[str], Optional[str]]:
+    if value is None:
+        return None, None
+    candidate = value.strip()
+    if not candidate:
+        return None, candidate
+    if "," in candidate:
+        prefix, leaf = candidate.rsplit(",", 1)
+        prefix = prefix.strip()
+        leaf = leaf.strip()
+        if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_$]*(?:\.[A-Za-z_][A-Za-z0-9_$]*)*", prefix) and re.fullmatch(
+            r"[A-Za-z_][A-Za-z0-9_$]*", leaf
+        ):
+            return prefix, leaf
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_$]*(?:\.[A-Za-z_][A-Za-z0-9_$]*)+", candidate):
+        return None, candidate
+    prefix, leaf = candidate.rsplit(".", 1)
+    return prefix, leaf
+
+
 def local_name(iri: str) -> str:
     if "#" in iri:
         return iri.rsplit("#", 1)[1]
@@ -212,6 +232,22 @@ def normalize_query_operator(value: Optional[str]) -> str:
     if candidate not in VALID_QUERY_OPERATORS:
         raise ValueError(f"Unsupported query operator '{value}'. Supported: {sorted(VALID_QUERY_OPERATORS)}")
     return candidate
+
+
+def supports_auto_graph_index(cardinality: Optional[str]) -> bool:
+    return normalize_cardinality(cardinality) != "LIST"
+
+
+def supports_relation_index_data_type(data_type: Optional[str]) -> bool:
+    normalized_type = normalize_data_type(data_type)
+    return normalized_type in {"String", "Integer", "Long", "Float", "Double", "Decimal", "Boolean", "Date"}
+
+
+def default_relation_index_sort_order(data_type: Optional[str]) -> str:
+    normalized_type = normalize_data_type(data_type)
+    if normalized_type in {"Date"}:
+        return "desc"
+    return "asc"
 
 
 def to_iso_instant(value: datetime) -> str:

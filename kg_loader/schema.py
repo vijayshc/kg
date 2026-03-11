@@ -7,12 +7,15 @@ from .config import GraphIndexDefinition, LoaderConfig, PropertyMapping
 from .constants import SYSTEM_EDGE_PROPERTY_SPECS, SYSTEM_VERTEX_PROPERTY_SPECS
 from .ontology import OntologyCatalog
 from .utils import (
+    default_relation_index_sort_order,
     infer_data_type_from_ranges,
     local_name,
     normalize_cardinality,
     normalize_data_type,
     normalize_multiplicity,
     safe_name,
+    supports_auto_graph_index,
+    supports_relation_index_data_type,
     unique_preserve_order,
 )
 
@@ -346,7 +349,7 @@ class SchemaPlanner:
             edge_label = relationship.resolved_edge_label()
             mapped_relationship_iris.add(relationship.iri)
             self._register_name("edge_label", edge_label, relationship.iri)
-            plan.ensure_edge_label(edge_label, relationship.multiplicity, relationship.iri)
+            plan.ensure_edge_label(edge_label, relationship.resolved_multiplicity(self.ontology), relationship.iri)
 
             bound_property_keys = list(system_edge_property_keys)
             for prop in relationship.properties:
@@ -393,6 +396,9 @@ class SchemaPlanner:
             False,
         )
 
+        if not self.config.indexes:
+            self._add_auto_graph_indexes(plan)
+
         for index in self.config.indexes:
             self._register_name("graph_index", index.name, index.name)
             key_specs = self._graph_index_key_specs(index)
@@ -415,6 +421,9 @@ class SchemaPlanner:
                     index_only=index.index_only,
                 )
 
+        if not self.config.edge_relation_indexes:
+            self._add_auto_edge_relation_indexes(plan)
+
         for index in self.config.edge_relation_indexes:
             self._register_name(
                 "edge_relation_index",
@@ -428,6 +437,9 @@ class SchemaPlanner:
                 sort_order=index.sort_order,
                 property_keys=index.property_keys,
             )
+
+        if not self.config.property_relation_indexes:
+            self._add_auto_property_relation_indexes(plan)
 
         for index in self.config.property_relation_indexes:
             self._register_name(
@@ -468,6 +480,83 @@ class SchemaPlanner:
                 )
             )
         return key_specs
+
+    def _add_auto_graph_indexes(self, plan: SchemaPlan) -> None:
+        for class_mapping in self.config.classes:
+            label = class_mapping.resolved_vertex_label()
+            for prop in class_mapping.properties:
+                if not supports_auto_graph_index(prop.cardinality):
+                    continue
+                property_key = prop.resolved_property_key()
+                name = safe_name(f"auto_vertex_{label}_{property_key}")
+                self._register_name("graph_index", name, f"auto:vertex:{label}:{property_key}")
+                plan.ensure_vertex_index(
+                    name=name,
+                    key_specs=[GraphIndexKeySpec(property_key=property_key)],
+                    unique=False,
+                    kind="composite",
+                    index_only=label,
+                )
+
+        for relationship in self.config.relationships:
+            edge_label = relationship.resolved_edge_label()
+            for prop in relationship.properties:
+                if not supports_auto_graph_index(prop.cardinality):
+                    continue
+                property_key = prop.resolved_property_key()
+                name = safe_name(f"auto_edge_{edge_label}_{property_key}")
+                self._register_name("graph_index", name, f"auto:edge:{edge_label}:{property_key}")
+                plan.ensure_edge_index(
+                    name=name,
+                    key_specs=[GraphIndexKeySpec(property_key=property_key)],
+                    unique=False,
+                    kind="composite",
+                    index_only=edge_label,
+                )
+
+    def _add_auto_edge_relation_indexes(self, plan: SchemaPlan) -> None:
+        for relationship in self.config.relationships:
+            edge_label = relationship.resolved_edge_label()
+            for prop in relationship.properties:
+                property_key = prop.resolved_property_key()
+                data_type = self.resolve_property_data_type(prop)
+                if not supports_auto_graph_index(prop.cardinality) or not supports_relation_index_data_type(data_type):
+                    continue
+                name = safe_name(f"auto_edge_rel_{edge_label}_{property_key}")
+                self._register_name(
+                    "edge_relation_index",
+                    name,
+                    f"auto:edge_relation:{edge_label}:{property_key}",
+                )
+                plan.ensure_edge_relation_index(
+                    name=name,
+                    edge_label=edge_label,
+                    direction="BOTH",
+                    sort_order=default_relation_index_sort_order(data_type),
+                    property_keys=[property_key],
+                )
+
+    def _add_auto_property_relation_indexes(self, plan: SchemaPlan) -> None:
+        for class_mapping in self.config.classes:
+            for prop in class_mapping.properties:
+                if normalize_cardinality(prop.cardinality) == "SINGLE":
+                    continue
+                property_key = prop.resolved_property_key()
+                for meta_prop in prop.meta_properties:
+                    if not supports_relation_index_data_type(meta_prop.data_type):
+                        continue
+                    name = safe_name(f"auto_property_rel_{property_key}_{meta_prop.property_key}")
+                    self._register_name(
+                        "property_relation_index",
+                        name,
+                        f"auto:property_relation:{property_key}:{meta_prop.property_key}",
+                    )
+                    plan.ensure_property_relation_index(
+                        name=name,
+                        property_key=property_key,
+                        sort_order=default_relation_index_sort_order(meta_prop.data_type),
+                        meta_property_keys=[meta_prop.property_key],
+                    )
 
     def _register_name(self, namespace: str, name: str, iri: str) -> None:
         key = (namespace, name)

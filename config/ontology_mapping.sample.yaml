@@ -1,80 +1,47 @@
 ontology:
   file: ./ontology/enterprise.owl
-  format: xml
   include_unmapped_terms: true
 
 janusgraph:
   url: ${JANUSGRAPH_URL}
-  traversal_source: ${JANUSGRAPH_TRAVERSAL_SOURCE:-g}
-  graph_alias: ${JANUSGRAPH_GRAPH_ALIAS:-graph}
-  create_schema: true
-  request_timeout_seconds: ${JANUSGRAPH_REQUEST_TIMEOUT_SECONDS:-300}
 
 runtime:
   batch_size: ${KG_BATCH_SIZE:-500}
-  dry_run: false
-  strict_ontology: ${KG_STRICT_ONTOLOGY:-true}
   fail_on_missing_vertex: false
 
 classes:
   - iri: https://example.com/ontology/Customer
-    vertex_label: Customer
-    id_template: Customer:{customer_id}
     source:
       table: EDW.customer_dim
       key_column: customer_id
       where: active_ind = 'Y'
-      fetch_size: 1000
     properties:
       - iri: https://example.com/ontology/customerName
-        property_key: customerName
-        source_column: customer_name
-        data_type: String
-        cardinality: SINGLE
+        source_column: EDW.customer_dim.customer_name
 
       - iri: https://example.com/ontology/customerSegment
-        property_key: customerSegment
-        source_column: segment_code
-        source_table: EDW.customer_segment_hist
-        entity_key_column: customer_id
+        source_column: EDW.customer_segment_hist.segment_code
         where: current_ind = 'Y'
-        data_type: String
-        cardinality: SINGLE
 
   - iri: https://example.com/ontology/Account
-    vertex_label: Account
-    id_template: Account:{account_id}
     source:
       table: EDW.account_dim
       key_column: account_id
       where: closed_ind = 'N'
-      fetch_size: 1000
     properties:
       - iri: https://example.com/ontology/accountNumber
-        property_key: accountNumber
-        source_column: account_number
-        data_type: String
+        source_column: EDW.account_dim.account_number
       - iri: https://example.com/ontology/openDate
-        property_key: openDate
-        source_column: open_dt
-        data_type: Date
+        source_column: EDW.account_dim.open_dt
 
 relationships:
   - iri: https://example.com/ontology/ownsAccount
-    edge_label: ownsAccount
     source_class_iri: https://example.com/ontology/Customer
     target_class_iri: https://example.com/ontology/Account
-    id_template: ownsAccount:{customer_id}:{account_id}
-    multiplicity: MULTI
     source:
-      table: EDW.customer_account_bridge
-      from_column: customer_id
-      to_column: account_id
+      from_column: EDW.customer_account_bridge.customer_id
+      to_column: EDW.customer_account_bridge.account_id
       where: active_ind = 'Y'
-      fetch_size: 1000
     properties:
-      - property_key: relationshipType
-        iri: https://example.com/ontology/relationshipType
-        source_column: relationship_type
-        data_type: String
-        cardinality: SINGLE
+      - iri: https://example.com/ontology/relationshipType
+        source_column: EDW.customer_account_bridge.relationship_type

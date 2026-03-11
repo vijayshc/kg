@@ -554,21 +554,20 @@ def validate_mapping_against_ontology(config: LoaderConfig, ontology: OntologyCa
                 )
 
             effective_characteristics = ontology.effective_property_characteristics(relationship.iri)
+            resolved_multiplicity = relationship.resolved_multiplicity(ontology)
             source_max_cardinality = ontology.max_cardinality_for_class_property(source_class.iri, relationship.iri)
             if (source_max_cardinality == 1 or "functional" in effective_characteristics) and not multiplicity_supports_outgoing_functional(
-                relationship.multiplicity
+                resolved_multiplicity
             ):
                 issues.append(
                     f"Relationship IRI '{relationship.iri}' is constrained to one outgoing target per source in the ontology but "
-                    f"mapping multiplicity '{relationship.multiplicity}' does not enforce that. Use MANY2ONE or ONE2ONE."
+                    f"mapping multiplicity '{resolved_multiplicity}' does not enforce that. Use MANY2ONE or ONE2ONE."
                 )
 
-            if "inverse_functional" in effective_characteristics and not multiplicity_supports_incoming_functional(
-                relationship.multiplicity
-            ):
+            if "inverse_functional" in effective_characteristics and not multiplicity_supports_incoming_functional(resolved_multiplicity):
                 issues.append(
                     f"Relationship IRI '{relationship.iri}' is inverse-functional in the ontology but mapping multiplicity "
-                    f"'{relationship.multiplicity}' does not enforce one incoming source. Use ONE2MANY or ONE2ONE."
+                    f"'{resolved_multiplicity}' does not enforce one incoming source. Use ONE2MANY or ONE2ONE."
                 )
 
             relationship_lineage = ontology.property_lineage(relationship.iri)

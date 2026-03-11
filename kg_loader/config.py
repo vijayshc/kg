@@ -28,6 +28,7 @@ from .utils import (
     normalize_relation_direction,
     normalize_sort_order,
     safe_name,
+    split_qualified_identifier,
     substitute_env_values,
     unique_preserve_order,
     validate_gremlin_identifier,
@@ -136,7 +137,7 @@ class RelationshipMapping:
     target_class_iri: str
     edge_label: Optional[str] = None
     id_template: Optional[str] = None
-    multiplicity: str = "MULTI"
+    multiplicity: Optional[str] = None
     source: SourceSpec = field(default_factory=SourceSpec)
     properties: List[PropertyMapping] = field(default_factory=list)
 
@@ -148,13 +149,26 @@ class RelationshipMapping:
             target_class_iri=raw["target_class_iri"],
             edge_label=raw.get("edge_label"),
             id_template=raw.get("id_template"),
-            multiplicity=normalize_multiplicity(raw.get("multiplicity")),
+            multiplicity=(normalize_multiplicity(raw.get("multiplicity")) if raw.get("multiplicity") else None),
             source=SourceSpec.from_dict(raw.get("source")),
             properties=[PropertyMapping.from_dict(item) for item in raw.get("properties", [])],
         )
 
     def resolved_edge_label(self) -> str:
         return self.edge_label or safe_name(local_name(self.iri))
+
+    def resolved_multiplicity(self, ontology: Optional[Any] = None) -> str:
+        if self.multiplicity:
+            return normalize_multiplicity(self.multiplicity)
+        if ontology is not None:
+            characteristics = ontology.effective_property_characteristics(self.iri)
+            if "functional" in characteristics and "inverse_functional" in characteristics:
+                return "ONE2ONE"
+            if "functional" in characteristics:
+                return "MANY2ONE"
+            if "inverse_functional" in characteristics:
+                return "ONE2MANY"
+        return "MULTI"
 
     def resolved_id_template(self, source_class: ClassMapping, target_class: ClassMapping) -> str:
         if self.id_template:
@@ -516,8 +530,147 @@ class LoaderConfig:
             query_patterns=[QueryPatternDefinition.from_dict(item) for item in raw.get("query_patterns", [])],
             mapping_file=str(config_path),
         )
+        config.apply_source_shortcuts()
         config.validate()
         return config
+
+    def apply_source_shortcuts(self) -> None:
+        for class_mapping in self.classes:
+            self._normalize_source_key_column(class_mapping.source)
+            for prop in class_mapping.properties:
+                self._normalize_property_shortcuts(prop, class_mapping.source.table, class_mapping.source.key_column)
+
+        for relationship in self.relationships:
+            self._normalize_relationship_shortcuts(relationship)
+
+    def _normalize_property_shortcuts(
+        self,
+        prop: PropertyMapping,
+        default_table: Optional[str],
+        default_key_column: Optional[str],
+    ) -> None:
+        prop.source_table = self._normalize_column_reference(
+            prop.source_column,
+            prop.source_table,
+            default_table,
+            f"Property '{prop.iri}' source_column",
+            assign=lambda value: setattr(prop, "source_column", value),
+            allow_infer_same_table=False,
+            allow_external_table=True,
+        )
+        prop.source_table = self._normalize_column_reference(
+            prop.entity_key_column,
+            prop.source_table,
+            prop.source_table or default_table,
+            f"Property '{prop.iri}' entity_key_column",
+            assign=lambda value: setattr(prop, "entity_key_column", value),
+            allow_infer_same_table=True,
+            allow_external_table=False,
+        )
+        if prop.entity_key_column is None and prop.source_table and default_key_column:
+            prop.entity_key_column = default_key_column
+
+        effective_table = prop.source_table or default_table
+        for meta_prop in prop.meta_properties:
+            inferred_table = self._normalize_column_reference(
+                meta_prop.source_column,
+                prop.source_table,
+                effective_table,
+                f"Meta property '{meta_prop.property_key}' source_column",
+                assign=lambda value, meta_prop=meta_prop: setattr(meta_prop, "source_column", value),
+                allow_infer_same_table=False,
+                allow_external_table=False,
+            )
+            if inferred_table and prop.source_table is None:
+                prop.source_table = inferred_table if inferred_table != default_table else None
+                effective_table = prop.source_table or default_table
+                if prop.entity_key_column is None and prop.source_table and default_key_column:
+                    prop.entity_key_column = default_key_column
+
+    def _normalize_relationship_shortcuts(self, relationship: RelationshipMapping) -> None:
+        self._normalize_source_key_column(relationship.source)
+
+        relationship.source.table = self._normalize_column_reference(
+            relationship.source.from_column,
+            relationship.source.table,
+            relationship.source.table,
+            f"Relationship '{relationship.iri}' source.from_column",
+            assign=lambda value: setattr(relationship.source, "from_column", value),
+            allow_infer_same_table=True,
+            allow_external_table=False,
+        )
+        relationship.source.table = self._normalize_column_reference(
+            relationship.source.to_column,
+            relationship.source.table,
+            relationship.source.table,
+            f"Relationship '{relationship.iri}' source.to_column",
+            assign=lambda value: setattr(relationship.source, "to_column", value),
+            allow_infer_same_table=True,
+            allow_external_table=False,
+        )
+
+        base_table = relationship.source.table
+        for prop in relationship.properties:
+            inferred_table = self._normalize_column_reference(
+                prop.source_column,
+                relationship.source.table,
+                base_table,
+                f"Relationship property '{prop.iri}' source_column",
+                assign=lambda value, prop=prop: setattr(prop, "source_column", value),
+                allow_infer_same_table=True,
+                allow_external_table=False,
+            )
+            if inferred_table and relationship.source.table is None:
+                relationship.source.table = inferred_table
+                base_table = inferred_table
+
+    def _normalize_source_key_column(self, source: SourceSpec) -> None:
+        source.table = self._normalize_column_reference(
+            source.key_column,
+            source.table,
+            source.table,
+            "Source key_column",
+            assign=lambda value: setattr(source, "key_column", value),
+            allow_infer_same_table=True,
+            allow_external_table=False,
+        )
+
+    @staticmethod
+    def _normalize_column_reference(
+        reference: Optional[str],
+        declared_table: Optional[str],
+        default_table: Optional[str],
+        context: str,
+        assign: Any,
+        allow_infer_same_table: bool,
+        allow_external_table: bool,
+    ) -> Optional[str]:
+        table_prefix, column_name = split_qualified_identifier(reference)
+        if column_name is not None:
+            assign(column_name)
+        else:
+            assign(reference)
+
+        if table_prefix is None:
+            return declared_table
+
+        if declared_table:
+            if declared_table != table_prefix:
+                raise ValueError(
+                    f"{context} references table '{table_prefix}' but the surrounding mapping resolves to table '{declared_table}'. "
+                    "Use custom SQL when a single mapping needs columns from multiple physical tables."
+                )
+            return declared_table
+        if allow_external_table:
+            return table_prefix if table_prefix != default_table else None
+        if default_table and default_table != table_prefix:
+            raise ValueError(
+                f"{context} references table '{table_prefix}' but the surrounding mapping resolves to table '{default_table}'. "
+                "Use custom SQL when a single mapping needs columns from multiple physical tables."
+            )
+        if allow_infer_same_table:
+            return table_prefix
+        return declared_table
 
     def validate(self) -> None:
         if not Path(self.ontology.file).exists():

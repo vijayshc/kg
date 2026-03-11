@@ -439,20 +439,37 @@ Example pattern:
 
 ## 9.4 External attribute tables
 
-For properties that come from a different table than the main entity table, use:
-
-- `source_table`
-- `entity_key_column`
+For properties that come from a different table than the main entity table, the preferred shorthand is `table,column` in `source_column`.
 
 Example:
 
 ```yaml
 - iri: https://example.com/ontology/bank#city
-  property_key: city
-  source_column: city
-  source_table: customer_address
-  entity_key_column: customer_id
+  source_column: customer_address,city
 ```
+
+That shorthand automatically resolves to:
+
+- `source_table: customer_address`
+- `source_column: city`
+
+The loader still accepts dotted `table.column` references, but the YAML templates now standardize on `table,column` for property sources.
+
+If the external table uses the same entity key column name as the base entity table, you do not need to set `entity_key_column`. If it differs, set `entity_key_column` explicitly.
+
+## 9.5 Relationship row sources
+
+Relationships are loaded from one source rowset that contains both foreign keys.
+
+So the common case is still:
+
+- one `source.table`
+- one `from_column`
+- one `to_column`
+
+You may also omit `source.table` and use dotted `from_column` / `to_column` values such as `EDW.account_customer_bridge.customer_id` when all referenced relationship columns come from the same physical table. That is now the standard style used by the YAML templates.
+
+If a relationship must be assembled by joining multiple physical tables, use `source.sql` instead of trying to declare separate `from` and `to` tables.
 
 ---
 
@@ -774,9 +791,9 @@ The loader creates, if missing:
 - property keys,
 - vertex labels,
 - edge labels,
-- graph indexes declared in the mapping file,
+- graph indexes declared in the mapping file or auto-generated from mapped properties,
 - schema constraints declared implicitly by the mapped labels/properties/connections,
-- vertex-centric relation indexes declared in the mapping file.
+- vertex-centric relation indexes declared in the mapping file or auto-generated from mapped properties.
 
 Important JanusGraph compatibility notes discovered during live testing:
 
@@ -786,7 +803,14 @@ Important JanusGraph compatibility notes discovered during live testing:
 
 ### Graph index support now included
 
-The loader supports configurable **graph-global indexes** for both vertices and edges through the top-level `indexes:` section in the mapping file.
+The loader supports configurable **graph-global indexes** for both vertices and edges through the top-level `indexes:` section in the mapping file, but those sections are now optional.
+
+If you omit explicit index sections, the loader automatically creates:
+
+- one label-scoped composite graph index per mapped vertex property when the property cardinality is index-safe,
+- one label-scoped composite graph index per mapped edge property when the property cardinality is index-safe,
+- one edge relation index per mapped edge property when the property type is order-preserving,
+- one property relation index per eligible meta-property on a multi-valued vertex property.
 
 Supported today:
 
@@ -799,6 +823,13 @@ Supported today:
 - edge relation indexes via `vertex_centric_indexes.edge_indexes`
 - property relation indexes via `vertex_centric_indexes.property_indexes`
 - query-pattern-driven index recommendations emitted in the load report
+
+The manual sections still matter when you want something more specialized than the defaults, such as:
+
+- mixed indexes for text/range/geo search,
+- multi-property composite indexes,
+- custom mapped field names or analyzer settings,
+- hand-tuned vertex-centric indexes that differ from the automatic one-property defaults.
 
 If you declare a **unique composite index** on an eventually consistent storage backend, make sure the JanusGraph storage/locking configuration is aligned with that uniqueness requirement. The loader can define the index, but backend consistency still matters.
 
@@ -842,6 +873,30 @@ Use `vertex_centric_indexes.edge_indexes` when your hot path looks like this:
 Use `vertex_centric_indexes.property_indexes` when you model repeated vertex-property values plus meta-properties and need to traverse those values efficiently by meta-property.
 
 The loader also applies JanusGraph schema constraints using `addProperties` / `addConnection` so the server can reject writes that violate the mapped label/property/connection model when `schema.constraints=true` is enabled server-side.
+
+## 14.4.1 Minimal config philosophy
+
+The config model now aims to keep only source-system facts explicit and infer the rest.
+
+You can usually omit all of these unless you need a custom override:
+
+- `vertex_label`
+- `edge_label`
+- `property_key`
+- `id_template`
+- `multiplicity` (inferred from ontology functional / inverse-functional semantics when available)
+- `data_type` (inferred from ontology ranges when available)
+- `fetch_size`
+- `indexes`
+- `vertex_centric_indexes`
+- `query_patterns`
+
+In practice, a minimal mapping now mostly describes:
+
+- which ontology term is being mapped,
+- which source table/SQL provides the rows,
+- which source columns hold the values,
+- any truly custom overrides such as meta-properties, custom property keys, or mixed-index tuning.
 
 ## 14.5 Metadata stored on graph elements
 
